@@ -134,12 +134,11 @@ jobs:
           cd $GITHUB_WORKSPACE/OrangeFox
           export USE_CCACHE=1
           export CCACHE_EXEC=$(which ccache)
-          echo "=== source envsetup ==="
-          source build/envsetup.sh 2>&1 | tee /tmp/envsetup.log || { cat /tmp/envsetup.log; exit 1; }
-          echo "=== lunch ==="
-          lunch ${{ github.event.inputs.LUNCH_TARGET }} 2>&1 | tee /tmp/lunch.log || { cat /tmp/lunch.log; exit 1; }
-          echo "=== build ==="
-          ${{ github.event.inputs.BUILD_CMD }} -j$(nproc --all) 2>&1 | tee build.log
+          bash -c "
+            source build/envsetup.sh
+            lunch ${{ github.event.inputs.LUNCH_TARGET }}
+            ${{ github.event.inputs.BUILD_CMD }} -j\$(nproc --all) 2>&1 | tee build.log
+          "
         timeout-minutes: 180
 
       - name: ccache stats
