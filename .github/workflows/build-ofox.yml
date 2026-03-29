@@ -148,7 +148,7 @@ jobs:
           export TARGET_SCREEN_WIDTH=1080
           export TARGET_SCREEN_HEIGHT=2400
           echo "=== envsetup ==="
-          source build/envsetup.sh 2>&1
+          . build/envsetup.sh 2>&1
           echo "=== lunch ==="
           lunch twrp_${{ github.event.inputs.DEVICE_NAME }}-eng 2>&1
           echo "=== make clean ==="
@@ -157,6 +157,7 @@ jobs:
           mka adbd ${{ github.event.inputs.BUILD_TARGET }}image -j4 2>&1 | tee build.log
           echo "BUILD_DATE=$(date +%Y%m%d)" >> $GITHUB_ENV
         timeout-minutes: 180
+        shell: bash
 
       - name: ccache stats
         if: always()
