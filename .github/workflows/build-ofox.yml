@@ -41,7 +41,7 @@ on:
 jobs:
   build:
     name: 🦊 OrangeFox — myron (SD8 Elite)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     env:
