@@ -134,6 +134,9 @@ jobs:
           cd $GITHUB_WORKSPACE/OrangeFox
           export USE_CCACHE=1
           export CCACHE_EXEC=$(which ccache)
+          export TW_THEME=portrait_hdpi
+          export TARGET_SCREEN_WIDTH=1080
+          export TARGET_SCREEN_HEIGHT=2400
           bash -c "
             source build/envsetup.sh
             lunch ${{ github.event.inputs.LUNCH_TARGET }}
