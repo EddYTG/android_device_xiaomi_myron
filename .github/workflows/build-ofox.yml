@@ -1,0 +1,233 @@
+name: Build OrangeFox 12.1 — Xiaomi myron (SM8850 / SD8 Elite)
+
+on:
+  workflow_dispatch:
+    inputs:
+      DEVICE_TREE_URL:
+        description: 'URL repo device tree'
+        required: true
+        default: 'https://github.com/YOUR_USERNAME/android_device_xiaomi_myron'
+      DEVICE_TREE_BRANCH:
+        description: 'Branch device tree'
+        required: true
+        default: 'ofox-12.1'
+      DEVICE_NAME:
+        description: 'Codename'
+        required: true
+        default: 'myron'
+      LUNCH_TARGET:
+        description: 'Lunch target'
+        required: true
+        default: 'twrp_myron-eng'
+      BUILD_CMD:
+        description: 'Build command'
+        required: true
+        default: 'mka adbd recoveryimage'
+      UPLOAD_RELEASE:
+        description: 'Upload to GitHub Release?'
+        required: true
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+
+jobs:
+  build:
+    name: 🦊 OrangeFox — myron (SD8 Elite)
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    env:
+      TZ: Asia/Ho_Chi_Minh
+      DEVICE: myron
+
+    steps:
+      # ─── Maximize disk space ───────────────────────────
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 4096
+          swap-size-mb: 10240
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+
+      - name: Check disk space
+        run: df -h
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ─── Dependencies ──────────────────────────────────
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            git-core gnupg flex bison build-essential zip curl \
+            zlib1g-dev libc6-dev-i386 libncurses5-dev \
+            libx11-dev lib32z1-dev libgl1-mesa-dev \
+            libxml2-utils xsltproc unzip \
+            python3 python-is-python3 \
+            openjdk-11-jdk schedtool \
+            libssl-dev bc rsync ccache \
+            pngcrush imagemagick \
+            lz4
+
+      - name: Install repo tool
+        run: |
+          mkdir -p ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Configure git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git config --global color.ui false
+
+      # ─── Sync OrangeFox source ─────────────────────────
+      - name: Clone OrangeFox sync script
+        run: |
+          git clone https://gitlab.com/OrangeFox/sync.git /tmp/ofox_sync --depth=1
+
+      - name: Sync OrangeFox 12.1
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/OrangeFox
+          cd /tmp/ofox_sync
+          bash orangefox_sync.sh --branch 12.1 --path $GITHUB_WORKSPACE/OrangeFox
+        timeout-minutes: 90
+
+      # ─── Device tree ───────────────────────────────────
+      - name: Clone device tree
+        run: |
+          cd $GITHUB_WORKSPACE/OrangeFox
+          git clone \
+            --depth=1 \
+            --branch ${{ github.event.inputs.DEVICE_TREE_BRANCH }} \
+            ${{ github.event.inputs.DEVICE_TREE_URL }} \
+            device/xiaomi/${{ github.event.inputs.DEVICE_NAME }}
+          echo "Device tree cloned:"
+          ls device/xiaomi/${{ github.event.inputs.DEVICE_NAME }}/
+
+      # ─── ccache setup ──────────────────────────────────
+      - name: Setup ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-ofox-${{ github.event.inputs.DEVICE_NAME }}-${{ github.run_number }}
+          restore-keys: |
+            ccache-ofox-${{ github.event.inputs.DEVICE_NAME }}-
+
+      - name: Configure ccache
+        run: |
+          ccache -M 15G
+          ccache -z
+          echo "USE_CCACHE=1" >> $GITHUB_ENV
+          echo "CCACHE_EXEC=$(which ccache)" >> $GITHUB_ENV
+          echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
+
+      # ─── Build ─────────────────────────────────────────
+      - name: Build OrangeFox Recovery
+        run: |
+          cd $GITHUB_WORKSPACE/OrangeFox
+          export USE_CCACHE=1
+          export CCACHE_EXEC=$(which ccache)
+          source build/envsetup.sh
+          lunch ${{ github.event.inputs.LUNCH_TARGET }}
+          ${{ github.event.inputs.BUILD_CMD }} -j$(nproc --all) 2>&1 | tee build.log
+        timeout-minutes: 180
+
+      - name: ccache stats
+        run: ccache -s
+
+      # ─── Find output ───────────────────────────────────
+      - name: Find output files
+        id: find_output
+        run: |
+          cd $GITHUB_WORKSPACE/OrangeFox
+          DEVICE=${{ github.event.inputs.DEVICE_NAME }}
+          OUT="out/target/product/$DEVICE"
+
+          # Tìm OrangeFox zip
+          ZIP=$(find $OUT -maxdepth 1 -name "OrangeFox*.zip" 2>/dev/null | head -1)
+          # Tìm recovery.img
+          IMG=$(find $OUT -maxdepth 1 -name "OrangeFox*.img" 2>/dev/null | head -1)
+          # Fallback recovery.img
+          if [ -z "$IMG" ]; then
+            IMG=$(find $OUT -maxdepth 1 -name "recovery.img" 2>/dev/null | head -1)
+          fi
+
+          echo "zip=$ZIP" >> $GITHUB_OUTPUT
+          echo "img=$IMG" >> $GITHUB_OUTPUT
+
+          echo "=== Output files ==="
+          ls -lh $OUT/*.img $OUT/*.zip 2>/dev/null || echo "No img/zip found"
+
+      # ─── Upload artifact ───────────────────────────────
+      - name: Upload recovery.img artifact
+        if: steps.find_output.outputs.img != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrangeFox-${{ github.event.inputs.DEVICE_NAME }}-img-${{ github.run_number }}
+          path: ${{ steps.find_output.outputs.img }}
+          retention-days: 7
+
+      - name: Upload OrangeFox zip artifact
+        if: steps.find_output.outputs.zip != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrangeFox-${{ github.event.inputs.DEVICE_NAME }}-zip-${{ github.run_number }}
+          path: ${{ steps.find_output.outputs.zip }}
+          retention-days: 7
+
+      # ─── Upload build log (luôn upload kể cả lỗi) ─────
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ github.run_number }}
+          path: ${{ github.workspace }}/OrangeFox/build.log
+          retention-days: 3
+
+      # ─── GitHub Release ────────────────────────────────
+      - name: Create GitHub Release
+        if: github.event.inputs.UPLOAD_RELEASE == 'true' && steps.find_output.outputs.img != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: OrangeFox-myron-${{ github.run_number }}
+          name: "🦊 OrangeFox 12.1 | myron | Build #${{ github.run_number }}"
+          prerelease: true
+          body: |
+            ## 🦊 OrangeFox Recovery 12.1 — Xiaomi myron
+
+            | | |
+            |---|---|
+            | **Device** | Xiaomi myron (K90 Pro Max) |
+            | **Chip** | Snapdragon 8 Elite (sm8850 / sun) |
+            | **Platform** | xiaomi_sm8850 |
+            | **Partition** | A-only + Virtual A/B |
+            | **Filesystem** | EROFS (system/vendor), F2FS (data) |
+            | **FBE** | AES-256-XTS + Thales KeyMint Strongbox |
+            | **Boot header** | v4 |
+            | **Ramdisk** | LZ4 legacy |
+            | **Build date** | ${{ github.run_id }} |
+            | **OFox branch** | 12.1 |
+
+            ### Flash
+            ```
+            fastboot flash recovery OrangeFox-*.img
+            fastboot reboot recovery
+            ```
+
+            ### Ghi chú decrypt
+            - Device dùng **Thales JavaCard HSM** (keymint-strongbox)
+            - Cần có `ese_weaver_thales.so`, `libjc_keymint-thales.so` từ stock ROM
+            - Xem README để biết cách lấy thư viện và fix decrypt
+
+            > ⚠️ Backup trước khi flash!
+          files: |
+            ${{ steps.find_output.outputs.img }}
+            ${{ steps.find_output.outputs.zip }}
+          token: ${{ secrets.GITHUB_TOKEN }}

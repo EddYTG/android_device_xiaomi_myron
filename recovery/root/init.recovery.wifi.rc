@@ -1,0 +1,7 @@
+# WiFi init for recovery — Xiaomi myron
+# Imported by init.recovery.qcom.rc
+
+on fs
+    mkdir /data/vendor/wifi 0770 wifi wifi
+    mkdir /data/vendor/wifi/wpa 0770 wifi wifi
+    mkdir /data/vendor/wifi/wpa/sockets 0770 wifi wifi
