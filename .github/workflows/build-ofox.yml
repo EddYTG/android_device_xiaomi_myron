@@ -140,16 +140,20 @@ jobs:
       # ─── Build ─────────────────────────────────────────
       - name: Build OrangeFox Recovery
         run: |
-          cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
+          cd ${GITHUB_WORKSPACE}/OrangeFox/fox_12.1
           export USE_CCACHE=1
           export CCACHE_EXEC=$(which ccache)
           export ALLOW_MISSING_DEPENDENCIES=true
           export TW_THEME=portrait_hdpi
           export TARGET_SCREEN_WIDTH=1080
           export TARGET_SCREEN_HEIGHT=2400
-          source build/envsetup.sh
-          lunch twrp_${{ github.event.inputs.DEVICE_NAME }}-eng
-          make clean
+          echo "=== envsetup ==="
+          source build/envsetup.sh 2>&1
+          echo "=== lunch ==="
+          lunch twrp_${{ github.event.inputs.DEVICE_NAME }}-eng 2>&1
+          echo "=== make clean ==="
+          make clean 2>&1
+          echo "=== build ==="
           mka adbd ${{ github.event.inputs.BUILD_TARGET }}image -j4 2>&1 | tee build.log
           echo "BUILD_DATE=$(date +%Y%m%d)" >> $GITHUB_ENV
         timeout-minutes: 180
