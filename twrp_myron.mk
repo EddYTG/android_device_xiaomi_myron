@@ -6,7 +6,7 @@
 
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base_telephony.mk)
-$(call inherit-product, vendor/twrp/config/common.mk)
+$(call inherit-product, vendor/omni/config/common.mk)
 $(call inherit-product, device/xiaomi/myron/device.mk)
 
 # ─────────────────────────────────────────────────────────
@@ -19,7 +19,7 @@ $(call inherit-product, device/xiaomi/myron/device.mk)
 PRODUCT_DEVICE := myron
 PRODUCT_NAME := twrp_myron
 PRODUCT_BRAND := Xiaomi
-PRODUCT_MODEL := 25102RKBEC
+PRODUCT_MODEL := POCO F8 Ultra
 PRODUCT_MANUFACTURER := Xiaomi
 
 # ─────────────────────────────────────────────────────────
@@ -29,4 +29,4 @@ PRODUCT_MANUFACTURER := Xiaomi
 PRODUCT_BUILD_PROP_OVERRIDES += \
     PRIVATE_BUILD_DESC="myron-user 15 AP3A.250605.031.A2 release-keys"
 
-BUILD_FINGERPRINT := Xiaomi/myron/myron:15/AP3A.250605.031.A2/V999:user/release-keys
+BUILD_FINGERPRINT := Redmi/myron/myron:16/BQ2A.250705.001-BP2A.250605.031.A3/OS3.0.303.0.WPMCNXM:user/release-keys
