@@ -1,6 +1,6 @@
 #
-# Copyright (C) 2026 The OrangeFox Recovery Project
-# Device: Xiaomi myron (sm8850_thales / Snapdragon 8 Elite)
+# Copyright (C) 2026 OrangeFox Recovery Project
+# Device: Xiaomi F8U / POCO F8 Ultra / Redmi K90 Pro Max (myron)
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -9,24 +9,15 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base_telephony.mk)
 $(call inherit-product, vendor/twrp/config/common.mk)
 $(call inherit-product, device/xiaomi/myron/device.mk)
 
-# ─────────────────────────────────────────────────────────
 # Product identity
-# Confirmed từ prop.default:
-# ro.product.system.brand=Xiaomi
-# ro.product.system.device=sm8850_thales
-# ro.product.system.model=twrp_sm8850_thales
-# ─────────────────────────────────────────────────────────
-PRODUCT_DEVICE := myron
-PRODUCT_NAME := twrp_myron
-PRODUCT_BRAND := Xiaomi
-PRODUCT_MODEL := POCO F8 Ultra
+PRODUCT_DEVICE       := myron
+PRODUCT_NAME         := twrp_myron
+PRODUCT_BRAND        := Xiaomi
+PRODUCT_MODEL        := Xiaomi F8U
 PRODUCT_MANUFACTURER := Xiaomi
 
-# ─────────────────────────────────────────────────────────
-# Build fingerprint — từ prop.default thực tế
-# ro.build.id=BP2A.250605.031.A2
-# ─────────────────────────────────────────────────────────
+# Build fingerprint — from working TWRP prop.default
 PRODUCT_BUILD_PROP_OVERRIDES += \
-    PRIVATE_BUILD_DESC="myron-user 15 AP3A.250605.031.A2 release-keys"
+    PRIVATE_BUILD_DESC="myron-user 16 BQ2A.250705.001-BP2A.250605.031.A3 OS3.0.303.0.WPMCNXM release-keys"
 
 BUILD_FINGERPRINT := Redmi/myron/myron:16/BQ2A.250705.001-BP2A.250605.031.A3/OS3.0.303.0.WPMCNXM:user/release-keys

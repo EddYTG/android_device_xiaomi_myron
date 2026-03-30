@@ -1,185 +1,89 @@
-# 🦊 OrangeFox Recovery — Xiaomi myron (K90 Pro Max)
+# OrangeFox Recovery — Xiaomi F8U / POCO F8 Ultra / Redmi K90 Pro Max
 
-> Device tree cho **Xiaomi myron** chạy **Snapdragon 8 Elite (sm8850)**  
-> Phân tích từ recovery.img thực tế — ramdisk boot header v4, LZ4 legacy
-
----
-
-## Thông tin device
-
-| | |
-|---|---|
-| Tên máy | Xiaomi K90 Pro Max |
-| Codename | `myron` |
-| Board | `sm8850_thales` |
-| Platform | `xiaomi_sm8850` (sun) |
-| Chip | Snapdragon 8 Elite (sm8850) |
-| GPU | Adreno 840 |
-| Arch | arm64 / oryon |
-| Partition | A-only + Virtual A/B |
-| Filesystem | EROFS (system/vendor), F2FS (data) |
-| Encryption | FBE v2 + Thales KeyMint Strongbox (JavaCard HSM) |
-| Boot header | v4 |
-| Ramdisk | LZ4 Legacy |
-| Android | 15 (API 35) |
-| Recovery size | 100MB |
+**Codename:** `myron`  
+**SoC:** Snapdragon 8 Elite (sm8850 / sun)  
+**Android:** 16 (SDK 36), Kernel 6.12  
+**Partition type:** A/B with dedicated recovery partition + Virtual A/B  
 
 ---
 
-## Cấu trúc tree
+## Tree source
 
-```
-android_device_xiaomi_myron/
-├── BoardConfig.mk              # Board config chính
-├── Android.mk / Android.bp     # Build system
-├── AndroidProducts.mk          # Lunch targets
-├── twrp_myron.mk               # Product definition
-├── device.mk                   # Device packages
-├── fox_myron.mk                # OrangeFox-specific flags
-├── system.prop                 # System properties
-├── recovery.fstab              # Partition mount table
-├── vendorsetup.sh
-├── odm/
-│   ├── bin/
-│   │   ├── prepdecrypt.sh      # Script chuẩn bị decrypt (từ stock)
-│   │   ├── variant-script.sh
-│   │   └── hw/                 # → CẦN COPY TỪ STOCK ROM
-│   │       ├── android.hardware.security.keymint-service.strongbox
-│   │       └── android.hardware.weaver-service
-│   ├── lib64/                  # → CẦN COPY TỪ STOCK ROM
-│   │   ├── ese_weaver_thales.so
-│   │   ├── libjc_keymint-thales.so
-│   │   └── libjc_keymint_transport-thales.so
-│   └── etc/init/               # RC service files
-│       ├── prepdecrypt.rc
-│       ├── android.hardware.security.keymint-service.strongbox.rc
-│       ├── android.hardware.weaver-service.rc
-│       └── se_omapi.rc
-├── recovery/root/
-│   ├── init.recovery.qcom.rc   # Từ ramdisk thực tế
-│   └── init.recovery.wifi.rc
-└── prebuilt/
-    └── kernel                  # → CẦN THÊM kernel Image
-```
+All files in this tree are extracted from **working TWRP 3.7.1_16-myron** ramdisk + TWRP boot log analysis.  
+No guesswork — every config value is confirmed from the live device.
 
 ---
 
-## Build
-
-### 1. Sync OrangeFox source
+## Build instructions
 
 ```bash
-mkdir -p ~/android/OrangeFox
-git clone https://gitlab.com/OrangeFox/sync.git
-cd sync
-./orangefox_sync.sh --branch 12.1 --path ~/android/OrangeFox
-```
-
-### 2. Clone device tree
-
-```bash
-cd ~/android/OrangeFox
-git clone https://github.com/YOUR_USERNAME/android_device_xiaomi_myron \
-    -b ofox-12.1 device/xiaomi/myron
-```
-
-### 3. Thêm prebuilt kernel
-
-```bash
-# Lấy kernel từ stock ROM
-adb pull /dev/block/bootdevice/by-name/boot boot.img
-./out/host/linux-x86/bin/magiskboot unpack boot.img
-cp kernel device/xiaomi/myron/prebuilt/kernel
-```
-
-### 4. Copy Thales libs từ stock ROM (BẮT BUỘC để decrypt)
-
-```bash
-# Kết nối device đang chạy stock ROM
-adb pull /odm/lib64/ese_weaver_thales.so            device/xiaomi/myron/odm/lib64/
-adb pull /odm/lib64/libjc_keymint-thales.so         device/xiaomi/myron/odm/lib64/
-adb pull /odm/lib64/libjc_keymint_transport-thales.so device/xiaomi/myron/odm/lib64/
-adb pull /odm/bin/hw/android.hardware.security.keymint-service.strongbox device/xiaomi/myron/odm/bin/hw/
-adb pull /odm/bin/hw/android.hardware.weaver-service device/xiaomi/myron/odm/bin/hw/
-adb pull /odm/bin/se_omapi                           device/xiaomi/myron/odm/bin/
-```
-
-### 5. Build
-
-```bash
-cd ~/android/OrangeFox
+# 1. Set up OrangeFox build environment (AOSP 12.1 / OFox R12.1)
 source build/envsetup.sh
+
+# 2. Sync device tree
+cd device && mkdir xiaomi && cd xiaomi
+# Place this tree as: device/xiaomi/myron
+
+# 3. Build
 lunch twrp_myron-eng
-mka adbd recoveryimage -j$(nproc)
-```
+mka recoveryimage -j$(nproc)
 
-### 6. Flash
-
-```bash
-fastboot flash recovery out/target/product/myron/recovery.img
-fastboot reboot recovery
+# Output: out/target/product/myron/recovery.img
 ```
 
 ---
 
-## Nguyên nhân lỗi giải mã (phân tích từ ramdisk)
+## Key fixes vs original bootlooping tree
 
-Device này dùng **Thales JavaCard HSM** cho encryption key management — đây là hardware security module đặc biệt, **không thể build từ source**.
-
-### Chain decrypt của myron:
-
-```
-FBE unlock request
-    → keymint-strongbox  (odm/bin/hw/)
-        → ese_weaver_thales.so  (Thales SE lib)
-            → libjc_keymint-thales.so  (JavaCard bridge)
-                → Physical Thales SE chip
-    → weaver-service  (odm/bin/hw/)
-        → ese_weaver_thales.so
-    → prepdecrypt.sh  (odm/bin/)
-        → setprop crypto.ready 1
-    → TWRP decrypt UI
-```
-
-### Các lỗi thường gặp và fix:
-
-| Lỗi | Nguyên nhân | Fix |
-|-----|-------------|-----|
-| "Decryption unsuccessful" | Thiếu `ese_weaver_thales.so` | Copy từ stock ROM |
-| "keymint-strongbox failed" | Thiếu Thales binary | Copy `android.hardware.security.keymint-service.strongbox` |
-| "crypto.ready not set" | `prepdecrypt.sh` không chạy | Kiểm tra `init.recovery.qcom.rc` có trigger `odm.prepdecrypt` |
-| Màn hình đen sau boot | Thiếu kernel phù hợp | Dùng kernel từ stock ROM |
-| Touch không hoạt động | Thiếu touch KO modules | Thêm đúng `.ko` vào `TW_LOAD_VENDOR_MODULES` |
+| File | What was wrong | Fixed |
+|------|---------------|-------|
+| `BoardConfig.mk` | `TW_LOAD_VENDOR_MODULES` had `oplus_bsp_tp_*.ko` (nonexistent) | → `focaltech_touch_3683.ko` |
+| `BoardConfig.mk` | `BOARD_BOOTIMAGE_PARTITION_SIZE` was 104857600 (wrong) | → 100663296 (96MB actual) |
+| `BoardConfig.mk` | Dynamic partition list missing `vendor_dlkm`, `system_dlkm`, `mi_ext` | → all 8 partitions added |
+| `recovery.fstab` | `slotselect` was removed (device IS A/B) | → restored from TWRP ramdisk verbatim |
 
 ---
 
-## TODO checklist
+## Device confirmed properties (from live TWRP log + ramdisk)
 
-- [ ] Copy Thales libs từ stock ROM vào `odm/lib64/`
-- [ ] Copy Thales binaries vào `odm/bin/hw/`
-- [ ] Thêm kernel prebuilt vào `prebuilt/kernel`
-- [ ] Cập nhật `BOARD_SUPER_PARTITION_SIZE` đúng với device
-- [ ] Xác nhận tên `.ko` touchscreen và thêm vào `TW_LOAD_VENDOR_MODULES`
-- [ ] Cập nhật `BUILD_FINGERPRINT` trong `twrp_myron.mk`
-- [ ] Test decrypt và ghi log `/tmp/recovery.log`
-
----
-
-## Debug decrypt
-
-Sau khi boot recovery, kết nối ADB:
-
-```bash
-adb shell cat /tmp/recovery.log | grep -iE "decrypt|crypto|keymint|weaver|prepdecrypt"
-adb shell getprop crypto.ready
-adb shell getprop ro.crypto.state
-adb shell getprop ro.crypto.type
+```
+ro.board.platform          = xiaomi_sm8850
+ro.product.board           = sun
+ro.boot.slot_suffix        = _a         ← TRUE A/B device
+ro.virtual_ab.enabled      = true
+ro.boot.dynamic_partitions = true
+ro.crypto.type             = file       ← FBE v2
+fbe.filenames              = aes-256-cts:v2+inlinecrypt_optimized+wrappedkey_v0
+Screen                     = 1200×2608  RGBX_8888
+Kernel                     = 6.12, boot header v4, LZ4 ramdisk
+AB OTA partitions          = boot,dtbo,init_boot,odm,product,recovery,
+                             system,system_dlkm,system_ext,vbmeta,
+                             vbmeta_system,vendor,vendor_boot,vendor_dlkm
+Touch driver               = focaltech_touch_3683.ko (FTS series)
+Security patch (TWRP)      = 2099-12-31
 ```
 
 ---
 
-## Credits
+## Partition layout (from TWRP log)
 
-- Ramdisk analysis: phân tích từ recovery.img thực tế của device
-- Reference: [OnePlus 15 tree](https://github.com/koaaN/android_device_oneplus_infiniti-orangefox) (cùng platform sm8850)
-- [OrangeFox Recovery Project](https://orangefox.download)
+```
+/boot           96MB   /dev/block/bootdevice/by-name/boot_a
+/recovery      100MB   /dev/block/bootdevice/by-name/recovery_a
+/vendor_boot    96MB   /dev/block/bootdevice/by-name/vendor_boot_a
+/init_boot       8MB   /dev/block/bootdevice/by-name/init_boot_a
+/dtbo           32MB   /dev/block/bootdevice/by-name/dtbo_a
+/data          f2fs    /dev/block/sda34                       (FBE encrypted)
+/metadata      f2fs    /dev/block/sda20
+/cache         ext4    /dev/block/sda32  (rescue partition)
+/persist       ext4    /dev/block/sdf8
+Super logical partitions (dm-0..dm-7):
+  mi_ext  odm  product  system  system_dlkm  system_ext  vendor  vendor_dlkm
+  All format: erofs (read-only)
+```
+
+---
+
+## Maintainer
+
+Update `OF_MAINTAINER` in `fox_myron.mk`.
