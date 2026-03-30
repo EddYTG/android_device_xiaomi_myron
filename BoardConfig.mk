@@ -69,10 +69,6 @@ BOARD_RAMDISK_USE_LZ4 := true
 # Kernel: compile từ source (không dùng prebuilt)
 # Nếu muốn prebuilt: thêm lại TARGET_FORCE_PREBUILT_KERNEL và TARGET_PREBUILT_KERNEL
 # và đặt file kernel vào prebuilt/kernel
-TARGET_FORCE_PREBUILT_KERNEL := true
-ifeq ($(TARGET_FORCE_PREBUILT_KERNEL),true)
-TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilt/kernel
-endif
 
 
 # Recovery image không chứa kernel riêng (A-only nhưng dùng init_boot)
@@ -83,9 +79,10 @@ BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := false
 # Confirmed từ: ramdisk có /dev/block/bootdevice/by-name/recovery
 # prepdecrypt.sh detect "recovery partition found"
 # ─────────────────────────────────────────────────────────
-AB_OTA_UPDATER := false
+AB_OTA_UPDATER := true
 # Nhưng vẫn cần virtual_ab vì ro.virtual_ab.enabled=true
 BOARD_USES_RECOVERY_AS_BOOT := false
+BOARD_RECOVERY_NEEDS_BOOTLOADER_CONTROL := true
 
 # ─────────────────────────────────────────────────────────
 # Partitions — confirmed từ ramdisk props
@@ -103,17 +100,18 @@ TARGET_USERIMAGES_USE_EXT4 := true
 TARGET_USERIMAGES_USE_F2FS := true
 
 # Dynamic partitions
-BOARD_SUPER_PARTITION_SIZE := 9126805504           # TODO: xác nhận từ device
+BOARD_SUPER_PARTITION_SIZE := 11274289152           # TODO: xác nhận từ device
 BOARD_SUPER_PARTITION_GROUPS := xiaomi_dynamic_partitions
 BOARD_XIAOMI_DYNAMIC_PARTITIONS_PARTITION_LIST := \
     system \
     system_ext \
+    system_dlkm \
     product \
     vendor \
     vendor_dlkm \
     odm
 
-BOARD_XIAOMI_DYNAMIC_PARTITIONS_SIZE := 9122611200
+BOARD_XIAOMI_DYNAMIC_PARTITIONS_SIZE := 11270094848
 
 # EROFS (chuẩn Android 15 / SD8 Elite)
 BOARD_PARTITION_LIST := $(call to-upper, $(BOARD_XIAOMI_DYNAMIC_PARTITIONS_PARTITION_LIST))
@@ -157,7 +155,6 @@ TW_THEME := portrait_hdpi
 TW_BRIGHTNESS_PATH := "/sys/class/backlight/panel0-backlight/brightness"
 TW_DEFAULT_BRIGHTNESS := 1200
 TW_MAX_BRIGHTNESS := 4094
-TW_FRAMERATE := 120
 TW_NO_SCREEN_BLANK := true
 TW_SCREEN_BLANK_ON_BOOT := true
 
@@ -239,9 +236,37 @@ PLATFORM_VERSION_LAST_STABLE := $(PLATFORM_VERSION)
 PLATFORM_SECURITY_PATCH := 2099-12-31
 VENDOR_SECURITY_PATCH := $(PLATFORM_SECURITY_PATCH)
 BOOT_SECURITY_PATCH := $(PLATFORM_SECURITY_PATCH)
-BOARD_AVB_RECOVERY_KEY_PATH := external/avb/test/data/testkey_rsa4096.pem
-BOARD_AVB_RECOVERY_ALGORITHM := SHA256_RSA4096
-BOARD_AVB_RECOVERY_ROLLBACK_INDEX := 1
-BOARD_AVB_RECOVERY_ROLLBACK_INDEX_LOCATION := 1
+BOARD_SYSTEMSDK_VERSIONS := 35
 
+# ─────────────────────────────────────────────────────────
+# FIX từ log phân tích recovery.log
+# Device: POCO F8 Ultra / Xiaomi K90 Pro Max (myron)
+# ro.boot.slot_suffix=_a → A/B device với recovery slot
+# width=1200, height=2608 (thực tế từ log)
+# ─────────────────────────────────────────────────────────
 
+# A/B partitions - confirmed từ log: recovery_a, boot_a, vendor_boot_a
+AB_OTA_PARTITIONS += \
+    boot \
+    init_boot \
+    recovery \
+    vendor_boot \
+    dtbo \
+    odm \
+    product \
+    system \
+    system_dlkm \
+    system_ext \
+    vbmeta \
+    vbmeta_system \
+    vendor \
+    vendor_boot \
+    vendor_dlkm
+
+# Display - confirmed từ log: width=1200, height=2608
+TW_FRAMERATE := 120
+TARGET_SCREEN_WIDTH := 1200
+TARGET_SCREEN_HEIGHT := 2608
+
+# Device version - confirmed từ log
+TW_DEVICE_VERSION := POCO_F8_ULTRA
