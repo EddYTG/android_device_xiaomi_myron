@@ -12,8 +12,8 @@ OF_MAINTAINER := YourName
 # ─────────────────────────────────────────────────────────
 # Display — confirmed từ twres/ui.xml: 1080x1920
 # ─────────────────────────────────────────────────────────
-OF_SCREEN_H := 1920
-OF_STATUS_H := 96
+OF_SCREEN_H := 2608
+OF_STATUS_H := 100
 OF_HIDE_NOTCH := 0
 OF_STATUS_INDENT_LEFT := 48
 OF_STATUS_INDENT_RIGHT := 48
@@ -28,13 +28,13 @@ OF_USE_GREEN_LED := 0
 # Partition tools
 # ─────────────────────────────────────────────────────────
 OF_ENABLE_ALL_PARTITION_TOOLS := 1
-OF_DYNAMIC_FULL_SIZE := 9126805504
+OF_DYNAMIC_FULL_SIZE := 11274289152
 
 # ─────────────────────────────────────────────────────────
 # A-only device với virtual A/B
 # Confirmed: prepdecrypt.sh detect có recovery partition
 # ─────────────────────────────────────────────────────────
-OF_AB_DEVICE_WITH_RECOVERY_PARTITION := 0
+OF_AB_DEVICE_WITH_RECOVERY_PARTITION := 1
 # Device có recovery partition riêng — KHÔNG phải recovery-in-boot
 
 # Boot control AIDL (Android 14+)
