@@ -124,12 +124,10 @@ BOARD_SUPER_PARTITION_GROUPS := xiaomi_dynamic_partitions
 BOARD_XIAOMI_DYNAMIC_PARTITIONS_PARTITION_LIST := \
     system \
     system_ext \
-    system_dlkm \
     product \
     vendor \
     vendor_dlkm \
-    odm \
-    mi_ext
+    odm 
 
 BOARD_XIAOMI_DYNAMIC_PARTITIONS_SIZE := 11270094848
 
