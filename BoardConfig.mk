@@ -66,8 +66,10 @@ BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOT_HEADER_VERSION)
 BOARD_MKBOOTIMG_ARGS += --pagesize $(BOARD_KERNEL_PAGESIZE)
 BOARD_RAMDISK_USE_LZ4 := true
 
-TARGET_FORCE_PREBUILT_KERNEL := true
-TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilt/kernel
+# Kernel: compile từ source (không dùng prebuilt)
+# Nếu muốn prebuilt: thêm lại TARGET_FORCE_PREBUILT_KERNEL và TARGET_PREBUILT_KERNEL
+# và đặt file kernel vào prebuilt/kernel
+
 
 # Recovery image không chứa kernel riêng (A-only nhưng dùng init_boot)
 BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := false
