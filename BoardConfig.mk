@@ -69,6 +69,10 @@ BOARD_RAMDISK_USE_LZ4 := true
 # Kernel: compile từ source (không dùng prebuilt)
 # Nếu muốn prebuilt: thêm lại TARGET_FORCE_PREBUILT_KERNEL và TARGET_PREBUILT_KERNEL
 # và đặt file kernel vào prebuilt/kernel
+TARGET_FORCE_PREBUILT_KERNEL := true
+ifeq ($(TARGET_FORCE_PREBUILT_KERNEL),true)
+TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilt/kernel
+endif
 
 
 # Recovery image không chứa kernel riêng (A-only nhưng dùng init_boot)
