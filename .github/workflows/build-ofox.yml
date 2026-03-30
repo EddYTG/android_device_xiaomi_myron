@@ -140,7 +140,7 @@ jobs:
       # ─── Build ─────────────────────────────────────────
       - name: Build OrangeFox Recovery
         run: |
-          cd ${GITHUB_WORKSPACE}/OrangeFox/fox_12.1
+          cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
           export USE_CCACHE=1
           export CCACHE_EXEC=$(which ccache)
           export ALLOW_MISSING_DEPENDENCIES=true
