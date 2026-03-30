@@ -9,7 +9,6 @@ LOCAL_PATH := device/xiaomi/myron
 # Shipping API level — confirmed: ro.product.first_api_level=35
 BOARD_SHIPPING_API_LEVEL := 35
 PRODUCT_SHIPPING_API_LEVEL := 35
-PRODUCT_TARGET_VNDK_VERSION := 35
 
 # Dynamic partitions
 PRODUCT_USE_DYNAMIC_PARTITIONS := true
