@@ -108,11 +108,9 @@ BOARD_SUPER_PARTITION_GROUPS := xiaomi_dynamic_partitions
 BOARD_XIAOMI_DYNAMIC_PARTITIONS_PARTITION_LIST := \
     system \
     system_ext \
-    system_dlkm \
     product \
     vendor \
-    vendor_dlkm \
-    odm
+    odm 
 
 BOARD_XIAOMI_DYNAMIC_PARTITIONS_SIZE := 11270094848
 
@@ -257,13 +255,11 @@ AB_OTA_PARTITIONS += \
     odm \
     product \
     system \
-    system_dlkm \
     system_ext \
     vbmeta \
     vbmeta_system \
     vendor \
-    vendor_boot \
-    vendor_dlkm
+    vendor_boot 
 
 # Display - confirmed từ log: width=1200, height=2608
 TW_FRAMERATE := 120
