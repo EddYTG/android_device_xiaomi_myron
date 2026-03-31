@@ -168,7 +168,7 @@ TARGET_USERIMAGES_USE_F2FS       := true
 
 # Dynamic partitions
 # Confirmed: ro.boot.dynamic_partitions=true
-BOARD_SUPER_PARTITION_SIZE := 11274289152
+BOARD_SUPER_PARTITION_SIZE := 14495514624
 BOARD_SUPER_PARTITION_GROUPS := xiaomi_dynamic_partitions
 
 # Partition list from prop.default AB list (minus system_dlkm which is in twrp.flags)
@@ -180,7 +180,7 @@ BOARD_XIAOMI_DYNAMIC_PARTITIONS_PARTITION_LIST := \
     vendor_dlkm \
     odm
 
-BOARD_XIAOMI_DYNAMIC_PARTITIONS_SIZE := 11270094848
+BOARD_XIAOMI_DYNAMIC_PARTITIONS_SIZE := 14491320320
 
 # All dynamic partitions use erofs (confirmed from recovery.fstab in ramdisk)
 BOARD_PARTITION_LIST := $(call to-upper, $(BOARD_XIAOMI_DYNAMIC_PARTITIONS_PARTITION_LIST))
@@ -228,8 +228,11 @@ TW_USE_FSCRYPT_POLICY            := 2
 # ─────────────────────────────────────────────────────────
 TARGET_RECOVERY_PIXEL_FORMAT  := RGBX_8888
 TARGET_RECOVERY_QCOM_RTC_FIX  := true
+TARGET_RECOVERY_FSTAB         := $(DEVICE_PATH)/recovery/root/recovery.fstab
 TW_INCLUDE_FASTBOOTD          := true
 TW_SKIP_ADDITIONAL_FSTAB      := true
+# API 35 (ro.product.first_api_level=35) cần flag này
+TW_NO_LEGACY_PROPS            := true
 
 # ─────────────────────────────────────────────────────────
 # Display
