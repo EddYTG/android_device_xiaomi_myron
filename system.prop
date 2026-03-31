@@ -5,8 +5,6 @@ ro.product.board=sun
 ro.boot.dynamic_partitions=true
 ro.virtual_ab.enabled=true
 ro.virtual_ab.compression.enabled=true
-ro.product.first_api_level=35
-ro.board.first_api_level=35
 # USB IDs from prop.default
 ro.recovery.usb.vid=18D1
 ro.recovery.usb.adb.pid=D001
