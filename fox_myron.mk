@@ -27,7 +27,6 @@ OF_AB_DEVICE_WITH_RECOVERY_PARTITION := 1
 OF_USE_AIDL_BOOT_CONTROL             := 1
 
 # Virtual A/B (confirmed: ro.virtual_ab.enabled=true + compression)
-OF_VIRTUAL_AB_DEVICE := 1
 
 # AVB — confirmed: algorithm=NONE, unsigned
 OF_PATCH_AVB20 := 1
