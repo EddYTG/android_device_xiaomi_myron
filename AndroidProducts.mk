@@ -3,5 +3,4 @@ PRODUCT_MAKEFILES := \
 
 COMMON_LUNCH_CHOICES := \
     omni_myron-eng \
-    omni_myron-user \
     omni_myron-userdebug
