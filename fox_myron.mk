@@ -19,14 +19,16 @@ OF_USE_GREEN_LED := 0
 
 # Partition tools
 OF_ENABLE_ALL_PARTITION_TOOLS := 1
-OF_DYNAMIC_FULL_SIZE          := 11274289152
+OF_DYNAMIC_FULL_SIZE          := 14495514624
 
 # A/B with dedicated recovery partition
 # Confirmed: /recovery in twrp.flags, NOT in AB_OTA list
 OF_AB_DEVICE_WITH_RECOVERY_PARTITION := 1
 OF_USE_AIDL_BOOT_CONTROL             := 1
 
-# Virtual A/B (confirmed: ro.virtual_ab.enabled=true + compression)
+# Virtual A/B: OF_VIRTUAL_AB_DEVICE đã bị xóa trong OFox 12.1
+# Thay bằng: export FOX_VIRTUAL_AB_DEVICE=1 trong GitHub Actions workflow
+# Xem README để biết cách thêm vào workflow
 
 # AVB — confirmed: algorithm=NONE, unsigned
 OF_PATCH_AVB20 := 1
