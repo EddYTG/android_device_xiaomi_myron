@@ -1,47 +1,38 @@
 # OrangeFox Recovery — Xiaomi myron (POCO F8 Ultra / Redmi K90 Pro Max)
+## Branch: 14.1 (Android 16 / SDK 36)
 
-## Device Info
 | Field | Value |
 |---|---|
 | Codename | myron |
 | SoC | Snapdragon 8 Elite (SM8850 / sun) |
-| Recovery | **Dedicated** `/dev/block/bootdevice/by-name/recovery` |
-| Boot type | A/B (VAB) with dedicated recovery — NOT recovery-as-boot |
-| Screen | 1200×2608 RGBX_8888 |
-| Encryption | FBE v2, Thales Keymint Strongbox + Weaver |
+| Android | 16 (SDK 36) |
+| Recovery partition | Dedicated 100MB `/recovery_a/_b` |
+| super size | 14495514624 (13.5GB) — from `fastboot getvar all` |
 
-## Build Command
+## Build
 ```bash
 source build/envsetup.sh
-lunch twrp_myron-eng
+export FOX_VIRTUAL_AB_DEVICE=1
+lunch omni_myron-eng
 mka recoveryimage
 ```
 
-## GitHub Actions — CRITICAL
+## GitHub Actions workflow
 ```yaml
-BUILD_TARGET: recoveryimage   ← MUST BE THIS
-# NOT: bootimage  ← causes bootloop
+- name: Building OrangeFox
+  run: |
+    export ALLOW_MISSING_DEPENDENCIES=true
+    export FOX_VIRTUAL_AB_DEVICE=1   ← BẮT BUỘC
+    lunch omni_myron-eng && make clean && mka recoveryimage
 ```
 
-## Why the Old Tree Bootlooped
-
-| Flag | Old (wrong) | New (correct) |
+## Fixes vs auto-generated tree
+| Flag | Auto-gen (sai) | Tree này (đúng) |
 |---|---|---|
-| `BOARD_USES_RECOVERY_AS_BOOT` | `true` | `false` |
-| GitHub `BUILD_TARGET` | `bootimage` | `recoveryimage` |
-
-**Evidence from TWRP ramdisk:**
-1. `twrp.flags`: `/recovery emmc /dev/block/bootdevice/by-name/recovery`
-2. `prop.default` AB_OTA list does **not** include `recovery`
-3. Image = exactly 100MB = `BOARD_RECOVERYIMAGE_PARTITION_SIZE`
-4. `kernel_size = 0` → GKI-style recovery, kernel in vendor_boot
-
-## All Data Verified From TWRP 3.7.1_16 Ramdisk
-- **Image header**: kernel_size=0, ramdisk LZ4 legacy, os_version=99.87.36
-- **AVB**: algorithm=NONE, auth_block_size=0 (unsigned)
-- **prop.default**: all platform props, USB IDs, API levels, security patch
-- **recovery.fstab**: exact FBE flags, partition layout
-- **twrp.flags**: exact partition list including /recovery dedicated
-- **RC files**: exact init sequence, service names, LD_LIBRARY_PATH
-- **variant-script.sh**: y_offset=111, h_offset=-111, vibrator=qcom-haptics
-- **odm/**: Thales blobs, focaltech firmware, vibrator service
+| BOARD_USES_RECOVERY_AS_BOOT | true | false |
+| TARGET_BOARD_PLATFORM | canoe | sm8850 |
+| BOARD_SUPER_PARTITION_SIZE | 9126805504 | 14495514624 |
+| BOARD_BOOTIMAGE_PARTITION_SIZE | 104857600 | 100663296 |
+| BOARD_SYSTEMIMAGE_PARTITION_TYPE | ext4 | erofs |
+| BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE | ext4 | f2fs |
+| PRODUCT_NAME | twrp_myron | omni_myron |

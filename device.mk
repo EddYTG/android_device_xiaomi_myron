@@ -4,8 +4,6 @@
 LOCAL_PATH := device/xiaomi/myron
 
 PRODUCT_USE_DYNAMIC_PARTITIONS := true
-
-# Virtual A/B confirmed
 PRODUCT_VIRTUAL_AB_OTA := true
 
 PRODUCT_PACKAGES += \

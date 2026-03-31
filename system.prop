@@ -1,11 +1,10 @@
-# System properties — verified from TWRP 3.7.1_16 prop.default
+# Verified from TWRP 3.7.1_16 prop.default
 ro.adb.secure=0
 ro.board.platform=xiaomi_sm8850
 ro.product.board=sun
 ro.boot.dynamic_partitions=true
 ro.virtual_ab.enabled=true
 ro.virtual_ab.compression.enabled=true
-# USB IDs from prop.default
 ro.recovery.usb.vid=18D1
 ro.recovery.usb.adb.pid=D001
 ro.recovery.usb.fastboot.pid=4EE0

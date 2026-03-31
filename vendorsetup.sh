@@ -1,0 +1,2 @@
+add_lunch_combo omni_myron-eng
+add_lunch_combo omni_myron-userdebug
