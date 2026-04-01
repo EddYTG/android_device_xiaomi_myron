@@ -48,3 +48,11 @@ OF_NO_TREBLE_COMPATIBILITY_CHECK := 1
 
 # Virtual A/B — export trong workflow: export FOX_VIRTUAL_AB_DEVICE=1
 # OF_VIRTUAL_AB_DEVICE đã bị xóa trong OFox 12.1+
+
+# Crypto: dùng system vold, không check MIUI props
+OF_NO_ADDITIONAL_MIUI_PROPS_CHECK := 1
+OF_CHECK_OVERWRITE_ATTEMPTS       := 1
+
+# Keymint: thiết bị dùng AIDL Keymint v3 (không phải keymaster 4.x)
+# Đảm bảo OFox không fallback về keymaster cũ
+OF_USE_AIDL_KEYMASTER             := 1

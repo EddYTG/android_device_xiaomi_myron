@@ -1,6 +1,6 @@
 # Verified from TWRP 3.7.1_16 prop.default
 ro.adb.secure=0
-ro.board.platform=xiaomi_sm8850
+ro.board.platform=sun
 ro.product.board=sun
 ro.boot.dynamic_partitions=true
 ro.virtual_ab.enabled=true

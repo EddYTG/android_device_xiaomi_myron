@@ -50,3 +50,11 @@ on boot
     write /sys/kernel/cnss/recovery 3
     chown radio wakelock /sys/power/wake_lock
     chown radio wakelock /sys/power/wake_unlock
+
+service cp-wifi-ko /system/bin/cp-wifi-ko.sh
+    class main
+    user root
+    group root
+    oneshot
+    disabled
+    seclabel u:r:recovery:s0
