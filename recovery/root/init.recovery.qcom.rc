@@ -1,7 +1,12 @@
-# init.recovery.qcom.rc — EXACT copy from TWRP 3.7.1_16 ramdisk
 # Copyright (c) 2017-2023, The Linux Foundation. All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
 import /init.recovery.wifi.rc
+
+on early-init
+    # Start gatekeeper early so it is ready before keymint
+    start vendor.gatekeeper_default
 
 on init
     start vendor.boot-qti

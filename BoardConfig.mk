@@ -36,9 +36,9 @@ ENABLE_SCHEDBOOST := true
 # Confirmed: ro.board.platform=xiaomi_sm8850, ro.product.board=sun
 # ─────────────────────────────────────────────────────────
 PRODUCT_PLATFORM      := sun
-TARGET_BOARD_PLATFORM := sun
+TARGET_BOARD_PLATFORM := xiaomi_sm8850
 TARGET_BOARD_PLATFORM_GPU := qcom-adreno840
-QCOM_BOARD_PLATFORMS  += sun
+QCOM_BOARD_PLATFORMS  += xiaomi_sm8850
 
 TARGET_BOOTLOADER_BOARD_NAME := myron
 TARGET_NO_BOOTLOADER         := true
@@ -88,8 +88,7 @@ AB_OTA_PARTITIONS += \
     vbmeta_system \
     vendor \
     vendor_boot \
-    vendor_dlkm \
-    mi_ext
+    vendor_dlkm
 
 BOARD_USES_RECOVERY_AS_BOOT             := false
 BOARD_RECOVERY_NEEDS_BOOTLOADER_CONTROL := true
@@ -155,7 +154,6 @@ TW_INCLUDE_CRYPTO                := true
 TW_INCLUDE_CRYPTO_FBE            := true
 TW_INCLUDE_FBE_METADATA_DECRYPT  := true
 TW_USE_FSCRYPT_POLICY            := 2
-TW_KEYMINT_SUPPORT            := true
 
 # ─────────────────────────────────────────────────────────
 # Recovery
