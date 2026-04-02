@@ -1,7 +1,7 @@
 #
 # Copyright (C) 2026 OrangeFox Recovery Project
 # Device: Xiaomi myron (POCO F8 Ultra / Redmi K90 Pro Max)
-# OrangeFox branch: 14.1 (Android 16 / SDK 36)
+# Branch: OrangeFox 14.1 (Android 16 / SDK 36)
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -16,7 +16,7 @@ PRODUCT_BRAND        := Xiaomi
 PRODUCT_MODEL        := POCO F8 Ultra
 PRODUCT_MANUFACTURER := Xiaomi
 
-# Fingerprint — from TWRP prop.default
+# Fingerprint — from TWRP prop.default (HyperOS 3.0)
 PRODUCT_BUILD_PROP_OVERRIDES += \
     PRIVATE_BUILD_DESC="myron-user 16 BP2A.250605.031.A2 OS3.0.303.0.WPMCNXM release-keys"
 
