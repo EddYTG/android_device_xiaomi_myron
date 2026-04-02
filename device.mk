@@ -82,7 +82,7 @@ PRODUCT_COPY_FILES += \
 # WiFi configs (peach_v2 = sm8850 WiFi chipset path)
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/recovery/root/vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini
-    $(DEVICE_PATH)/recovery/root/vendor/etc/wifi/wpa_supplicant.conf:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/wifi/wpa_supplicant.conf
+    $(DEVICE_PATH)/recovery/root/vendor/etc/wifi/wpa_supplicant.conf:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/wifi/wpa_supplicant.conf88
 
 # WiFi ko loader script
 PRODUCT_COPY_FILES += \
@@ -91,3 +91,4 @@ PRODUCT_COPY_FILES += \
 # System VINTF framework manifest
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/recovery/root/system/etc/vintf/manifest.xml:$(TARGET_COPY_OUT_RECOVERY)/root/system/etc/vintf/manifest.xml
+    
