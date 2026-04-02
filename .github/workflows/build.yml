@@ -96,6 +96,16 @@ jobs:
           "device/${{ github.event.inputs.DEVICE_PATH }}"
 
     # ──────────────────────────────────────────────────────────────────────────
+    - name: Verify device tree
+      run: |
+        echo "=== Verifying device tree ==="
+        ls "device/${{ github.event.inputs.DEVICE_PATH }}/"
+        echo "=== AndroidProducts.mk ==="
+        cat "device/${{ github.event.inputs.DEVICE_PATH }}/AndroidProducts.mk"
+        echo "=== twrp_${{ github.event.inputs.DEVICE_NAME }}.mk ==="
+        cat "device/${{ github.event.inputs.DEVICE_PATH }}/twrp_${{ github.event.inputs.DEVICE_NAME }}.mk"
+
+    # ──────────────────────────────────────────────────────────────────────────
     - name: Apply OrangeFox recovery patches
       run: |
         WORKINGDIR=$(pwd)
@@ -135,30 +145,11 @@ jobs:
     # ──────────────────────────────────────────────────────────────────────────
     - name: Build OrangeFox Recovery
       run: |
-        # ── CRITICAL: export FOX_ vars BEFORE source/lunch ──────────────────
-        # FOX_BUILD_DEVICE is required for OrangeFox to process all OF_/FOX_ vars
+        # ── vendorsetup.sh exports all FOX_ / OF_ vars automatically ─────────
+        # FOX_BUILD_DEVICE must be set before source/lunch
         export FOX_BUILD_DEVICE="${{ github.event.inputs.DEVICE_NAME }}"
         export LC_ALL="C"
         export ALLOW_MISSING_DEPENDENCIES=true
-
-        # OrangeFox-specific exports for myron (sm8850 / sun, dedicated recovery)
-        export FOX_VIRTUAL_AB_DEVICE=1
-        export OF_AB_DEVICE_WITH_RECOVERY_PARTITION=1
-        export FOX_AB_DEVICE=1
-        export OF_DYNAMIC_FULL_SIZE=14495514624
-        export OF_USE_LZ4_COMPRESSION=1
-        export OF_FORCE_PREBUILT_KERNEL=1
-        export OF_USE_AIDL_BOOT_CONTROL=1
-        export FOX_ENABLE_KERNELSU_SUPPORT=1
-        export FOX_ENABLE_KERNELSU_NEXT_SUPPORT=1
-        export FOX_ENABLE_SUKISU_SUPPORT=1
-        export OF_NO_RELOAD_AFTER_DECRYPTION=1
-        export OF_WIPE_METADATA_AFTER_DATAFORMAT=1
-        export FOX_USE_UPDATED_MAGISKBOOT=1
-        export OF_SCREEN_H=2608
-        export OF_STATUS_H=111
-        export OF_STATUS_INDENT_LEFT=48
-        export OF_STATUS_INDENT_RIGHT=48
 
         # ccache
         export CCACHE_DIR=.ccache
@@ -166,34 +157,36 @@ jobs:
         export CCACHE_MAXSIZE=5G
         export USE_CCACHE=1
 
-        # ── source + lunch ───────────────────────────────────────────────────
+        # ── source envsetup — vendorsetup.sh is auto-sourced here ─────────────
         source build/envsetup.sh
-        # 14.1 with dedicated recovery partition uses omni_ prefix + recoveryimage
-        lunch omni_${{ github.event.inputs.DEVICE_NAME }}-eng
 
-        # ── Build with progress indicator ────────────────────────────────────
+        # ── CORRECT lunch for OrangeFox 14.1 with dedicated recovery partition:
+        #    twrp_<device>-eng + recoveryimage  (NOT omni_, NOT ap2a)
+        #    Ref: https://wiki.orangefox.tech/en/dev/building
+        lunch twrp_${{ github.event.inputs.DEVICE_NAME }}-eng
+
+        # ── Build ─────────────────────────────────────────────────────────────
         (while true; do echo "$(date +%T) Building OrangeFox..."; free -h; sleep 15; done) &
         TIP_PID=$!
         mka adbd ${{ github.event.inputs.BUILD_PARTITION }}image
         kill $TIP_PID
 
-        # ── Rename outputs ───────────────────────────────────────────────────
+        # ── Rename outputs ────────────────────────────────────────────────────
         OUT_DIR="out/target/product/${{ github.event.inputs.DEVICE_NAME }}"
         SUFFIX="${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}"
 
-        # Rename .img (always present)
         if [ -f "$OUT_DIR/${{ github.event.inputs.BUILD_PARTITION }}.img" ]; then
           mv "$OUT_DIR/${{ github.event.inputs.BUILD_PARTITION }}.img" \
              "$OUT_DIR/OrangeFox-14.1-${SUFFIX}.img"
+          echo "IMG renamed: OrangeFox-14.1-${SUFFIX}.img"
         fi
 
-        # Rename .zip (OrangeFox build system auto-generates this)
         ZIP_SRC=$(ls "$OUT_DIR"/OrangeFox*.zip 2>/dev/null | head -1)
         if [ -n "$ZIP_SRC" ]; then
           mv "$ZIP_SRC" "$OUT_DIR/OrangeFox-14.1-${SUFFIX}.zip"
-          echo "ZIP found and renamed: OrangeFox-14.1-${SUFFIX}.zip"
+          echo "ZIP renamed: OrangeFox-14.1-${SUFFIX}.zip"
         else
-          echo "WARNING: No OrangeFox ZIP found in $OUT_DIR — check build logs"
+          echo "WARNING: No OrangeFox ZIP found in $OUT_DIR"
           ls "$OUT_DIR"/ || true
         fi
 

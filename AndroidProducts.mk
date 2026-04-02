@@ -4,8 +4,8 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/omni_myron.mk
+    $(LOCAL_DIR)/twrp_myron.mk
 
 COMMON_LUNCH_CHOICES := \
-    omni_myron-eng \
-    omni_myron-userdebug
+    twrp_myron-eng \
+    twrp_myron-userdebug

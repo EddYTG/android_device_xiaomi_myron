@@ -11,7 +11,7 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base_telephony.mk)
 $(call inherit-product, device/xiaomi/myron/device.mk)
 
 PRODUCT_DEVICE       := myron
-PRODUCT_NAME         := omni_myron
+PRODUCT_NAME         := twrp_myron
 PRODUCT_BRAND        := Xiaomi
 PRODUCT_MODEL        := POCO F8 Ultra
 PRODUCT_MANUFACTURER := Xiaomi
