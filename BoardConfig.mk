@@ -42,9 +42,9 @@ TARGET_BOOTLOADER_BOARD_NAME := $(PRODUCT_PLATFORM)
 TARGET_NO_BOOTLOADER  := true
 TARGET_USES_UEFI      := true
 
-TARGET_BOARD_PLATFORM := canoe
+TARGET_BOARD_PLATFORM := xiaomi_sm8850
 TARGET_BOARD_PLATFORM_GPU := qcom-adreno840
-QCOM_BOARD_PLATFORMS  += canoe
+QCOM_BOARD_PLATFORMS  += xiaomi_sm8850
 
 # ─────────────────────────────────────────────────────────
 # Kernel — prebuilt GKI, boot header v4, vendor_boot style

@@ -80,6 +80,15 @@ jobs:
         git config --global user.email "${{ github.actor }}@users.noreply.github.com"
 
     # ──────────────────────────────────────────────────────────────────────────
+    - name: Sync TWRP base manifest
+      run: |
+        repo init -u https://github.com/nebrassy/platform_manifest_twrp_aosp.git -b twrp-14 --depth=1
+        (while true; do echo "Syncing TWRP base..."; sleep 60; done) &
+        TIP_PID=$!
+        repo sync -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+        kill $TIP_PID || true
+
+    # ──────────────────────────────────────────────────────────────────────────
     - name: Sync OrangeFox 14.1 source
       run: |
         git clone https://gitlab.com/OrangeFox/sync.git -b master
@@ -160,10 +169,9 @@ jobs:
         # ── source envsetup — vendorsetup.sh is auto-sourced here ─────────────
         source build/envsetup.sh
 
-        # ── CORRECT lunch for OrangeFox 14.1 with dedicated recovery partition:
-        #    twrp_<device>-eng + recoveryimage  (NOT omni_, NOT ap2a)
-        #    Ref: https://wiki.orangefox.tech/en/dev/building
-        lunch twrp_${{ github.event.inputs.DEVICE_NAME }}-eng
+        # ── OrangeFox 14.1 + dedicated recovery: ap2a-eng + recoveryimage ──────
+        #    Confirmed by: koaaN/infiniti, adontoo/sm8750 repos
+        lunch twrp_${{ github.event.inputs.DEVICE_NAME }}-ap2a-eng
 
         # ── Build ─────────────────────────────────────────────────────────────
         (while true; do echo "$(date +%T) Building OrangeFox..."; free -h; sleep 15; done) &

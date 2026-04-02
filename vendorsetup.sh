@@ -30,6 +30,12 @@ export FOX_AB_DEVICE=1
 export OF_AB_DEVICE_WITH_RECOVERY_PARTITION=1
 export FOX_VIRTUAL_AB_DEVICE=1
 
+# ─── API V36 prebuilts (required for Android 16 / SDK 36 ROMs) ───────────────
+export FOX_ADD_API_V36_PREBUILTS=2
+
+# ─── dmsetup (required for virtual A/B + dynamic partitions) ─────────────────
+export FOX_USE_DMSETUP=1
+
 # ─── Compression / binaries ──────────────────────────────────────────────────
 export OF_USE_LZ4_COMPRESSION=1
 export FOX_USE_TAR_BINARY=1
@@ -65,6 +71,7 @@ export OF_DISPLAY_FORMAT_FILESYSTEMS_DEBUG_INFO=1
 export OF_FORCE_DATA_FORMAT_F2FS=1
 export OF_WIPE_METADATA_AFTER_DATAFORMAT=1
 export OF_UNBIND_SDCARD_F2FS=1
+export OF_WORKAROUND_BACKUP_BUG=1
 
 # ─── Kernel ───────────────────────────────────────────────────────────────────
 export OF_FORCE_PREBUILT_KERNEL=1

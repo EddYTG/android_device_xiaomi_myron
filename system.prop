@@ -1,7 +1,7 @@
 # Verified from TWRP 3.7.1_16 prop.default + ROM vendor/build.prop
 ro.adb.secure=0
-ro.board.platform=canoe
-ro.product.board=canoe
+ro.board.platform=xiaomi_sm8850
+ro.product.board=sun
 ro.boot.dynamic_partitions=true
 ro.virtual_ab.enabled=true
 ro.virtual_ab.compression.enabled=true

@@ -45,7 +45,6 @@ TWRP_REQUIRED_MODULES += \
     prebuilt
 
 # ─── OrangeFox config ─────────────────────────────────────────────────────────
-$(call inherit-product, $(DEVICE_PATH)/fox_myron.mk)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Recovery root files — Vendor binaries
@@ -79,10 +78,6 @@ PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/recovery/root/vendor/etc/ssg/ta_config.json:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/ssg/ta_config.json \
     $(DEVICE_PATH)/recovery/root/vendor/etc/ueventd.rc:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/ueventd.rc
 
-# WiFi configs (peach_v2 = sm8850 WiFi chipset path)
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/wifi/WCNSS_qcom_cfg.ini:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/wifi/wpa_supplicant.conf:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/wifi/wpa_supplicant.conf
 
 # WiFi ko loader script
 PRODUCT_COPY_FILES += \
