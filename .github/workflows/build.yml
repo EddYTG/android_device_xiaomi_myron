@@ -170,7 +170,7 @@ jobs:
         export CCACHE_MAXSIZE=5G
         export USE_CCACHE=1
         # Lunch with OFRP format
-        lunch omni_${{ env.LUNCH_TARGET }}-eng
+        lunch omni_${{ env.LUNCH_TARGET }}-trunk_staging-eng
         # Build with progress indicator
         (while true; do echo "$(date +%T) Building OrangeFox..."; free -h; sleep 15; done) &
         TIP_PID=$!
