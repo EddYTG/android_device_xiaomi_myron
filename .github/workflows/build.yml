@@ -19,10 +19,6 @@ on:
         description: "Device codename"
         required: true
         default: "myron"
-      LUNCH_TARGET:
-        description: "lunch prefix (leave blank = same as device name)"
-        required: false
-        default: ""
       BUILD_PARTITION:
         description: "Build partition (recovery)"
         required: true
@@ -38,21 +34,15 @@ jobs:
     # ──────────────────────────────────────────────────────────────────────────
     - name: Compute build metadata
       run: |
-        if [ -n "${{ github.event.inputs.LUNCH_TARGET }}" ]; then
-          echo "LUNCH_TARGET=${{ github.event.inputs.LUNCH_TARGET }}" >> "$GITHUB_ENV"
-        else
-          echo "LUNCH_TARGET=${{ github.event.inputs.DEVICE_NAME }}" >> "$GITHUB_ENV"
-        fi
         {
           echo 'BUILD_INFO<<EOF'
           echo
-          echo "Device tree url  : ${{ github.event.inputs.DEVICE_TREE_URL }}"
+          echo "Device tree url   : ${{ github.event.inputs.DEVICE_TREE_URL }}"
           echo "Device tree branch: ${{ github.event.inputs.DEVICE_TREE_BRANCH }}"
-          echo "Device path      : ${{ github.event.inputs.DEVICE_PATH }}"
-          echo "Device name      : ${{ github.event.inputs.DEVICE_NAME }}"
-          echo "Lunch target     : ${{ github.event.inputs.LUNCH_TARGET }}"
-          echo "Build target     : ${{ github.event.inputs.BUILD_PARTITION }}.img"
-          echo "Build date       : $(date)"
+          echo "Device path       : ${{ github.event.inputs.DEVICE_PATH }}"
+          echo "Device name       : ${{ github.event.inputs.DEVICE_NAME }}"
+          echo "Build target      : ${{ github.event.inputs.BUILD_PARTITION }}.img"
+          echo "Build date        : $(date)"
           echo
           echo EOF
         } >> "$GITHUB_ENV"
@@ -145,9 +135,13 @@ jobs:
     # ──────────────────────────────────────────────────────────────────────────
     - name: Build OrangeFox Recovery
       run: |
-        source build/envsetup.sh
-        # OrangeFox-specific exports for myron (sm8850 / sun)
+        # ── CRITICAL: export FOX_ vars BEFORE source/lunch ──────────────────
+        # FOX_BUILD_DEVICE is required for OrangeFox to process all OF_/FOX_ vars
+        export FOX_BUILD_DEVICE="${{ github.event.inputs.DEVICE_NAME }}"
+        export LC_ALL="C"
         export ALLOW_MISSING_DEPENDENCIES=true
+
+        # OrangeFox-specific exports for myron (sm8850 / sun, dedicated recovery)
         export FOX_VIRTUAL_AB_DEVICE=1
         export OF_AB_DEVICE_WITH_RECOVERY_PARTITION=1
         export FOX_AB_DEVICE=1
@@ -165,20 +159,43 @@ jobs:
         export OF_STATUS_H=111
         export OF_STATUS_INDENT_LEFT=48
         export OF_STATUS_INDENT_RIGHT=48
+
+        # ccache
         export CCACHE_DIR=.ccache
         export CCACHE_EXEC=$(command -v ccache)
         export CCACHE_MAXSIZE=5G
         export USE_CCACHE=1
-        # Lunch with OFRP format
-        lunch omni_${{ env.LUNCH_TARGET }}-ap2a-eng
-        # Build with progress indicator
+
+        # ── source + lunch ───────────────────────────────────────────────────
+        source build/envsetup.sh
+        # 14.1 with dedicated recovery partition uses omni_ prefix + recoveryimage
+        lunch omni_${{ github.event.inputs.DEVICE_NAME }}-eng
+
+        # ── Build with progress indicator ────────────────────────────────────
         (while true; do echo "$(date +%T) Building OrangeFox..."; free -h; sleep 15; done) &
         TIP_PID=$!
         mka adbd ${{ github.event.inputs.BUILD_PARTITION }}image
         kill $TIP_PID
-        # Rename output
-        mv "out/target/product/${{ github.event.inputs.DEVICE_NAME }}/${{ github.event.inputs.BUILD_PARTITION }}.img" \
-           "out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox-14.1-${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img"
+
+        # ── Rename outputs ───────────────────────────────────────────────────
+        OUT_DIR="out/target/product/${{ github.event.inputs.DEVICE_NAME }}"
+        SUFFIX="${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}"
+
+        # Rename .img (always present)
+        if [ -f "$OUT_DIR/${{ github.event.inputs.BUILD_PARTITION }}.img" ]; then
+          mv "$OUT_DIR/${{ github.event.inputs.BUILD_PARTITION }}.img" \
+             "$OUT_DIR/OrangeFox-14.1-${SUFFIX}.img"
+        fi
+
+        # Rename .zip (OrangeFox build system auto-generates this)
+        ZIP_SRC=$(ls "$OUT_DIR"/OrangeFox*.zip 2>/dev/null | head -1)
+        if [ -n "$ZIP_SRC" ]; then
+          mv "$ZIP_SRC" "$OUT_DIR/OrangeFox-14.1-${SUFFIX}.zip"
+          echo "ZIP found and renamed: OrangeFox-14.1-${SUFFIX}.zip"
+        else
+          echo "WARNING: No OrangeFox ZIP found in $OUT_DIR — check build logs"
+          ls "$OUT_DIR"/ || true
+        fi
 
     # ──────────────────────────────────────────────────────────────────────────
     - name: Upload to GitHub Release
@@ -186,8 +203,10 @@ jobs:
       with:
         files: |
           out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox-14.1-${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
+          out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox-14.1-${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.zip
         name: OrangeFox-14.1-${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}-${{ github.run_id }}
         tag_name: ${{ env.BUILD_DATE }}-${{ github.run_id }}
         body_path: device/${{ github.event.inputs.DEVICE_PATH }}/INFO.txt
+        fail_on_unmatched_files: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

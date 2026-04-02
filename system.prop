@@ -1,8 +1,7 @@
-# Verified from TWRP 3.7.1_16 prop.default
-# CRITICAL: ro.board.platform must match TWRP ramdisk value for Keymint lookup
+# Verified from TWRP 3.7.1_16 prop.default + ROM vendor/build.prop
 ro.adb.secure=0
-ro.board.platform=xiaomi_sm8850
-ro.product.board=sun
+ro.board.platform=canoe
+ro.product.board=canoe
 ro.boot.dynamic_partitions=true
 ro.virtual_ab.enabled=true
 ro.virtual_ab.compression.enabled=true
@@ -11,6 +10,6 @@ ro.recovery.usb.adb.pid=D001
 ro.recovery.usb.fastboot.pid=4EE0
 vendor.usb.configfs=1
 vendor.gatekeeper.disable_spu=true
-vendor.gatekeeper.is_security_level_spu=0
+vendor.gatekeeper.is_security_level_spu=1
 ro.minui.pixel_format=RGBX_8888
 ro.minui.overscan_percent=0

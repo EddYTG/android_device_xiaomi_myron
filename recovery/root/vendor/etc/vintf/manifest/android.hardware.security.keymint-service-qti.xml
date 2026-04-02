@@ -1,24 +1,24 @@
 <!--
     Input:
-        vendor/qcom/proprietary/securemsm/keymaster_utils/android.hardware.security.keymint-service-qti.xml
+        vendor/qcom/proprietary/securemsm/keymaster_utils/android.hardware.security.onekeymint-service-qti.xml
 -->
 <manifest version="8.0" type="device">
     <hal format="aidl">
-        <name>android.hardware.security.keymint</name>
+        <n>android.hardware.security.keymint</n>
         <version>3</version>
         <fqname>IKeyMintDevice/default</fqname>
     </hal>
     <hal format="aidl">
-        <name>android.hardware.security.keymint</name>
+        <n>android.hardware.security.keymint</n>
         <version>3</version>
         <fqname>IRemotelyProvisionedComponent/default</fqname>
     </hal>
     <hal format="aidl">
-        <name>android.hardware.security.secureclock</name>
+        <n>android.hardware.security.secureclock</n>
         <fqname>ISecureClock/default</fqname>
     </hal>
     <hal format="aidl">
-        <name>android.hardware.security.sharedsecret</name>
+        <n>android.hardware.security.sharedsecret</n>
         <fqname>ISharedSecret/default</fqname>
     </hal>
 </manifest>

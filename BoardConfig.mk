@@ -42,9 +42,9 @@ TARGET_BOOTLOADER_BOARD_NAME := $(PRODUCT_PLATFORM)
 TARGET_NO_BOOTLOADER  := true
 TARGET_USES_UEFI      := true
 
-TARGET_BOARD_PLATFORM := xiaomi_sm8850
+TARGET_BOARD_PLATFORM := canoe
 TARGET_BOARD_PLATFORM_GPU := qcom-adreno840
-QCOM_BOARD_PLATFORMS  += xiaomi_sm8850
+QCOM_BOARD_PLATFORMS  += canoe
 
 # ─────────────────────────────────────────────────────────
 # Kernel — prebuilt GKI, boot header v4, vendor_boot style
@@ -257,3 +257,4 @@ TW_USE_SERIALNO_PROPERTY_FOR_DEVICE_ID := true
 TW_CUSTOM_CPU_TEMP_PATH := "/sys/class/thermal/thermal_zone45/temp"
 TW_BACKUP_EXCLUSIONS  := /data/fonts
 TW_DEVICE_VERSION     := POCO_F8_Ultra
+BOARD_SYSTEMSDK_VERSIONS := 35
