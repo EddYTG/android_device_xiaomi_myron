@@ -20,7 +20,7 @@ on:
         required: true
         default: "myron"
       BUILD_PARTITION:
-        description: "Build partition: recovery (dedicated partition) or boot (VAB)"
+        description: "Build partition: recovery (dedicated) or boot (VAB)"
         required: true
         default: "recovery"
 
@@ -91,8 +91,6 @@ jobs:
         git config --global user.email "${{ github.actor }}@users.noreply.github.com"
 
     # ── Sync OrangeFox 14.1 source ─────────────────────────────────────────────
-    # FIX: dùng WORKINGDIR=$(pwd) = $GITHUB_WORKSPACE, sync vào đó
-    # Không cd vào sub-dir để tránh mất context giữa các steps
     - name: Sync OrangeFox 14.1 source
       run: |
         git clone https://gitlab.com/OrangeFox/sync.git -b master --depth=1
@@ -100,10 +98,9 @@ jobs:
         cd sync
         ./orangefox_sync.sh --branch 14.1 --path "$WORKINGDIR"
         cd "$WORKINGDIR"
-        # Verify key dirs exist
-        [ -d bootable/recovery ] || { echo "ERROR: bootable/recovery missing after sync!"; exit 1; }
-        [ -d vendor/twrp ]       || { echo "ERROR: vendor/twrp missing after sync!"; exit 1; }
-        echo "Sync OK — $(du -sh . 2>/dev/null | cut -f1) used"
+        [ -d bootable/recovery ] || { echo "ERROR: bootable/recovery missing!"; exit 1; }
+        [ -d vendor/twrp ]       || { echo "ERROR: vendor/twrp missing!"; exit 1; }
+        echo "Sync OK"
 
     # ── Clone device tree ──────────────────────────────────────────────────────
     - name: Setup device tree
@@ -112,10 +109,8 @@ jobs:
           -b "${{ github.event.inputs.DEVICE_TREE_BRANCH }}" \
           --depth=1 \
           "device/${{ github.event.inputs.DEVICE_PATH }}"
-        echo "Device tree cloned: $(ls device/${{ github.event.inputs.DEVICE_PATH }})"
 
     # ── Apply patches ──────────────────────────────────────────────────────────
-    # FIX: WORKINGDIR=$(pwd) ở mỗi step vì GitHub Actions mỗi step reset cwd
     - name: Apply OFox patches
       run: |
         WORKINGDIR=$(pwd)
@@ -123,13 +118,34 @@ jobs:
         if [ -d "$PATCH_DIR" ] && ls "$PATCH_DIR"/*.patch &>/dev/null; then
           cd "$WORKINGDIR/bootable/recovery"
           for p in "$PATCH_DIR"/*.patch; do
-            echo "Applying patch: $(basename $p)"
-            git apply "$p" && echo "  → OK" || echo "  → SKIP (may already be applied)"
+            echo "Applying: $(basename $p)"
+            git apply "$p" && echo "  OK" || echo "  SKIP (already applied)"
           done
           cd "$WORKINGDIR"
         else
-          echo "No patches found — skipping"
+          echo "No patches — skipping"
         fi
+
+    # ── Download Magisk 37 ─────────────────────────────────────────────────────
+    - name: Download Magisk
+      run: |
+        mkdir -p /tmp/misc
+        MAGISK_VERSION="v27.0"
+        # Thử v27.0 trước, fallback về latest nếu fail
+        wget -q --show-progress \
+          -O /tmp/misc/Magisk.zip \
+          "https://github.com/topjohnwu/Magisk/releases/download/${MAGISK_VERSION}/Magisk-${MAGISK_VERSION}.apk" \
+        && echo "Magisk ${MAGISK_VERSION} downloaded OK" \
+        || {
+          echo "v27.0 not found, trying latest release..."
+          LATEST=$(curl -s https://api.github.com/repos/topjohnwu/Magisk/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+          wget -q --show-progress \
+            -O /tmp/misc/Magisk.zip \
+            "https://github.com/topjohnwu/Magisk/releases/download/${LATEST}/Magisk-${LATEST}.apk" \
+          && echo "Magisk ${LATEST} downloaded OK" \
+          || echo "Magisk download FAILED (non-fatal)"
+        }
+        ls -lh /tmp/misc/Magisk.zip 2>/dev/null || echo "No Magisk zip"
 
     # ── Generate build info ────────────────────────────────────────────────────
     - name: Generate build info
@@ -149,10 +165,9 @@ jobs:
         cat INFO.txt
 
     # ── Build OrangeFox ────────────────────────────────────────────────────────
-    # FIX CRITICAL: lunch twrp_<device>-eng (KHÔNG dùng -ap2a-eng)
-    #   OrangeFox 14.1 / TWRP build system không hỗ trợ flavor "ap2a"
-    #   Dùng -eng trực tiếp như mọi TWRP/OFox device tree khác
-    # FIX: export PRODUCT_SOURCE_ROOT_DIRS="" để soong không prune external/libmicrohttpd
+    # FIX lunch: OFox 14.1 dùng format <product>-<release>-<variant>
+    #   Detect release name tự động từ build system thay vì hardcode
+    #   Fallback chain: trunk_staging → ap3a → ap2a → eng (legacy)
     - name: Build OrangeFox
       run: |
         source build/envsetup.sh
@@ -167,20 +182,41 @@ jobs:
         export USE_CCACHE=1
         export LC_ALL=C
 
-        # FIX: Đảm bảo soong không prune external/libmicrohttpd namespace
+        # Magisk path
+        export OF_MAGISK="/tmp/misc/Magisk.zip"
+        export FOX_USE_SPECIFIC_MAGISK_ZIP="/tmp/misc/Magisk.zip"
+
+        # Fix soong namespace pruning
         unset PRODUCT_SOURCE_ROOT_DIRS
 
-        # FIX: lunch đúng format cho OFox 14.1 — KHÔNG có flavor suffix -ap2a
-        lunch "twrp_${{ github.event.inputs.DEVICE_NAME }}-eng"
+        # Auto-detect đúng lunch combo cho OFox 14.1
+        # OFox 14.1 có thể dùng các release name khác nhau tùy commit
+        DEVICE="${{ github.event.inputs.DEVICE_NAME }}"
+        LUNCH_OK=0
 
-        # Progress monitor chạy background
+        for RELEASE in "" "trunk_staging" "trunk" "ap3a" "ap2a" "ap1a"; do
+          if [ -z "$RELEASE" ]; then
+            COMBO="twrp_${DEVICE}-eng"
+          else
+            COMBO="twrp_${DEVICE}-${RELEASE}-eng"
+          fi
+          echo "Trying lunch combo: $COMBO"
+          lunch "$COMBO" 2>/dev/null && { LUNCH_OK=1; echo "lunch OK: $COMBO"; break; }
+        done
+
+        if [ "$LUNCH_OK" -eq 0 ]; then
+          echo "ERROR: No valid lunch combo found! Dumping available combos:"
+          lunch 2>&1 | grep "twrp_" | head -20 || true
+          exit 1
+        fi
+
+        # Progress monitor
         (while true; do
           echo "$(date +%T) | Building... | RAM: $(free -h | awk '/^Mem/{print $3"/"$2}')"
           sleep 60
         done) &
         MONITOR_PID=$!
 
-        # Build
         mka adbd "${{ github.event.inputs.BUILD_PARTITION }}image" 2>&1 | tee /tmp/build.log
         BUILD_STATUS=${PIPESTATUS[0]}
 
@@ -188,21 +224,21 @@ jobs:
 
         if [ "$BUILD_STATUS" -ne 0 ]; then
           echo ""
-          echo "══════════════════════════════════════════"
-          echo "  BUILD FAILED — last 150 lines of log"
-          echo "══════════════════════════════════════════"
+          echo "══════════════════════════════════════"
+          echo "  BUILD FAILED — last 150 lines"
+          echo "══════════════════════════════════════"
           tail -150 /tmp/build.log
           exit 1
         fi
 
-        # Rename output image
-        OUT_DIR="out/target/product/${{ github.event.inputs.DEVICE_NAME }}"
-        IMG_NAME="OrangeFox-14.1-${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img"
-        mv "$OUT_DIR/${{ github.event.inputs.BUILD_PARTITION }}.img" "$OUT_DIR/$IMG_NAME"
-        echo "Build success: $IMG_NAME"
-        ls -lh "$OUT_DIR/$IMG_NAME"
+        # Rename output
+        OUT_DIR="out/target/product/${DEVICE}"
+        IMG_NAME="OrangeFox-14.1-${DEVICE}-${{ env.BUILD_DATE }}.img"
+        mv "${OUT_DIR}/${{ github.event.inputs.BUILD_PARTITION }}.img" "${OUT_DIR}/${IMG_NAME}"
+        echo "Build success!"
+        ls -lh "${OUT_DIR}/${IMG_NAME}"
 
-    # ── Upload build log (always, even on failure) ─────────────────────────────
+    # ── Upload build log (always) ──────────────────────────────────────────────
     - name: Upload build log
       if: always()
       uses: actions/upload-artifact@v4
