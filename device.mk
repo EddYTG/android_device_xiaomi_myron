@@ -136,7 +136,7 @@ ODM_MANIFEST_FILES += \
     $(DEVICE_PATH)/odm/etc/vintf/manifest.xml
 
 ODM_MANIFEST_SKUS += myron
-ODM_MANIFEST_myron_FILES := \
+ODM_MANIFEST_MYRON_FILES := \
     $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml \
     $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml \
     $(DEVICE_PATH)/odm/etc/vintf/manifest/se_omapi.xml \
