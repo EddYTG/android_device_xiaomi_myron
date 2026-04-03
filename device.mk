@@ -1,7 +1,8 @@
 #
 # Copyright (C) 2026 OrangeFox Recovery Project
 # Device: Xiaomi myron (POCO F8 Ultra / Redmi K90 Pro Max)
-# Branch: OrangeFox 14.1 (Android 16 / SDK 36)
+# Branch: OrangeFox 14.1
+# SoC   : Snapdragon 8 Elite Gen 5 (SM8850 / sun)
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -10,20 +11,22 @@ DEVICE_PATH := device/xiaomi/myron
 
 # ─── Inheritance ──────────────────────────────────────────────────────────────
 $(call inherit-product, $(SRC_TARGET_DIR)/product/base.mk)
-
 $(call inherit-product, $(SRC_TARGET_DIR)/product/virtual_ab_ota/compression_with_xor.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/emulated_storage.mk)
 $(call inherit-product, vendor/twrp/config/common.mk)
 
 # ─── API level ────────────────────────────────────────────────────────────────
-BOARD_SHIPPING_API_LEVEL   := 35
-PRODUCT_SHIPPING_API_LEVEL := 35
+# Confirmed: ro.product.first_api_level=35, ro.board.first_api_level=35 (getprop)
+BOARD_SHIPPING_API_LEVEL   := 34
+PRODUCT_SHIPPING_API_LEVEL := 34
 
 # ─── Dynamic partitions ───────────────────────────────────────────────────────
+# Confirmed: ro.boot.dynamic_partitions=true, ro.virtual_ab.enabled=true (getprop)
 PRODUCT_USE_DYNAMIC_PARTITIONS := true
 PRODUCT_VIRTUAL_AB_OTA         := true
 
 # ─── Fuse passthrough ─────────────────────────────────────────────────────────
+# Confirmed: persist.sys.fuse.passthrough.enable=true (getprop)
 PRODUCT_PROPERTY_OVERRIDES += persist.sys.fuse.passthrough.enable=true
 
 # ─── Soong namespaces ─────────────────────────────────────────────────────────
@@ -43,12 +46,10 @@ PRODUCT_EXTRA_RECOVERY_KEYS += \
 TWRP_REQUIRED_MODULES += \
     prebuilt
 
-# ─── OrangeFox config ─────────────────────────────────────────────────────────
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Recovery root files — Vendor binaries
-# (from TWRP 3.7.1_16 ramdisk — same vendor partition as sm8850)
-# CRITICAL for Keymint / Gatekeeper / qseecomd to work during decryption
+# Confirmed from adb shell (stock ROM TWRP ramdisk, same vendor partition sm8850)
+# CRITICAL for Keymint / Gatekeeper / qseecomd decryption chain
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Vendor init RC files
@@ -61,7 +62,8 @@ PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/recovery/root/vendor/etc/init/qseecomd.rc:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/init/qseecomd.rc \
     $(DEVICE_PATH)/recovery/root/vendor/etc/init/ssgtzd.rc:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/init/ssgtzd.rc
 
-# Vendor VINTF manifests (CRITICAL for Keymint version detection)
+# Vendor VINTF manifests
+# Confirmed keymint version=3 from odm vintf xml (adb shell)
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/recovery/root/vendor/etc/vintf/manifest.xml:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/vintf/manifest.xml \
     $(DEVICE_PATH)/recovery/root/vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml \
@@ -77,7 +79,6 @@ PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/recovery/root/vendor/etc/ssg/ta_config.json:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/ssg/ta_config.json \
     $(DEVICE_PATH)/recovery/root/vendor/etc/ueventd.rc:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/ueventd.rc
 
-
 # WiFi ko loader script
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/recovery/root/system/bin/cp-wifi-ko.sh:$(TARGET_COPY_OUT_RECOVERY)/root/system/bin/cp-wifi-ko.sh
@@ -87,8 +88,11 @@ PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/recovery/root/system/etc/vintf/manifest.xml:$(TARGET_COPY_OUT_RECOVERY)/root/system/etc/vintf/manifest.xml
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Recovery root files — ODM binaries (NXP JavaCard HSM / Weaver / Vibrator)
-# CRITICAL for decryption: weaver-service + keymint-service.strongbox
+# Recovery root files — ODM binaries
+# Confirmed from adb shell:
+#   /odm/bin/hw/ contains keymint-strongbox, weaver-service, vibratorfeature
+#   /odm/lib64/ contains ese_weaver_thales.so, libjc_keymint*.so, libaachaptics.so
+#   init.svc.odm.weaver-service=running, odm.keymint-strongbox=running (getprop)
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ODM HAL binaries
@@ -97,13 +101,20 @@ PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/odm/bin/hw/android.hardware.weaver-service:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/hw/android.hardware.weaver-service \
     $(DEVICE_PATH)/odm/bin/hw/vendor.xiaomi.hardware.vibratorfeature.service:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/hw/vendor.xiaomi.hardware.vibratorfeature.service
 
-# ODM libs (NXP JavaCard transport + weaver + miauthsecretd)
+# ODM libs (NXP JavaCard transport + weaver + haptics)
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/odm/lib64/ese_weaver_thales.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/ese_weaver_thales.so \
     $(DEVICE_PATH)/odm/lib64/libjc_keymint-thales.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libjc_keymint-thales.so \
     $(DEVICE_PATH)/odm/lib64/libjc_keymint_transport-thales.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libjc_keymint_transport-thales.so \
     $(DEVICE_PATH)/odm/lib64/libaachaptics.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libaachaptics.so
-# NOTE: libtensorflowlite_touch_c.so and libtouchreport*.so excluded — touch AI/reporting not needed in recovery
+
+# ODM scripts and misc bins
+PRODUCT_COPY_FILES += \
+    $(DEVICE_PATH)/odm/bin/prepdecrypt.sh:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/prepdecrypt.sh \
+    $(DEVICE_PATH)/odm/bin/variant-script.sh:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/variant-script.sh \
+    $(DEVICE_PATH)/odm/bin/se_omapi:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/se_omapi \
+    $(DEVICE_PATH)/odm/bin/touch_report:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/touch_report \
+    $(DEVICE_PATH)/odm/bin/init.kernel.post_boot-sun_default_6_2.sh:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/init.kernel.post_boot-sun_default_6_2.sh
 
 # ODM init RC files
 PRODUCT_COPY_FILES += \
@@ -117,6 +128,7 @@ PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/odm/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc
 
 # ODM VINTF manifests
+# Confirmed from adb shell cat /odm/etc/vintf/manifest/...
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/odm/etc/vintf/manifest.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest.xml \
     $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml \
@@ -124,10 +136,12 @@ PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/odm/etc/vintf/manifest/se_omapi.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/se_omapi.xml \
     $(DEVICE_PATH)/odm/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml
 
-# ODM vendor lib64 — miauthsecretd runtime copy (also needed by weaver at runtime)
+# ODM ueventd rules
 PRODUCT_COPY_FILES += \
+    $(DEVICE_PATH)/odm/etc/ueventd.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/ueventd.rc
 
-# Haptics firmware (cs40l26) — copy to recovery ramdisk
+# Haptics firmware (cs40l26)
+# Confirmed: ro.odm.mm.vibrator.device_type=agm, resonant_frequency=170 (getprop)
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26.bin \
     $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26.wmfw:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26.wmfw \
