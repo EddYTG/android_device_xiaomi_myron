@@ -126,7 +126,7 @@ PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/odm/etc/init/android.hardware.weaver-service.rc:$(TARGET_COPY_OUT_ODM)/etc/init/android.hardware.weaver-service.rc \
     $(DEVICE_PATH)/odm/etc/init/se_omapi.rc:$(TARGET_COPY_OUT_ODM)/etc/init/se_omapi.rc \
     $(DEVICE_PATH)/odm/etc/init/prepdecrypt.rc:$(TARGET_COPY_OUT_ODM)/etc/init/prepdecrypt.rc \
-    $(DEVICE_PATH)/recovery/root/odm/etc/init/init.odm.keymint.symlinks.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/init.odm.keymint.symlinks.rc \
+    $(DEVICE_PATH)/odm/etc/init/init.odm.keymint.symlinks.rc:$(TARGET_COPY_OUT_ODM)/etc/init/init.odm.keymint.symlinks.rc \
     $(DEVICE_PATH)/odm/etc/init/variant-script.rc:$(TARGET_COPY_OUT_ODM)/etc/init/variant-script.rc \
     $(DEVICE_PATH)/odm/etc/init/init.kernel.post_boot-sun.rc:$(TARGET_COPY_OUT_ODM)/etc/init/init.kernel.post_boot-sun.rc \
     $(DEVICE_PATH)/odm/etc/init/touch_report.rc:$(TARGET_COPY_OUT_ODM)/etc/init/touch_report.rc \
@@ -139,7 +139,6 @@ ODM_MANIFEST_FILES += \
 
 ODM_MANIFEST_SKUS += myron
 ODM_MANIFEST_MYRON_FILES := \
-    $(DEVICE_PATH)/recovery/root/odm/etc/vintf/manifest/android.hardware.weaver-service.xml \
     $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml \
     $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml \
     $(DEVICE_PATH)/odm/etc/vintf/manifest/se_omapi.xml \

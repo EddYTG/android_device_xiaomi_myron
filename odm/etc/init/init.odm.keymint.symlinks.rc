@@ -1,4 +1,4 @@
-# Symlinks: NXP-named libs → Thales-named libs (same binary, different filename)
+# Symlinks: NXP-named libs -> Thales-named libs (same binary, different filename)
 # Required by: keymint-service.strongbox, weaver-service
 # Confirmed via readelf -d on device binaries (BuildID match)
 on early-init
