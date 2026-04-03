@@ -165,11 +165,16 @@ jobs:
         cat INFO.txt
 
     # ── Build OrangeFox ────────────────────────────────────────────────────────
-    # FIX lunch: OFox 14.1 dùng format <product>-<release>-<variant>
-    #   Detect release name tự động từ build system thay vì hardcode
-    #   Fallback chain: trunk_staging → ap3a → ap2a → eng (legacy)
+    # FIX 1: unset PRODUCT_SOURCE_ROOT_DIRS *trước* envsetup.sh để Soong
+    #         không prune external/libmicrohttpd → fix lỗi soong_namespace
+    # FIX 2: lunch combo đúng là twrp_<device>-eng (theo AndroidProducts.mk)
+    #         không dùng release-name format (trunk_staging v.v.)
     - name: Build OrangeFox
       run: |
+        # FIX: phải unset trước khi source envsetup để Soong scan đủ namespace
+        unset PRODUCT_SOURCE_ROOT_DIRS
+        export PRODUCT_SOURCE_ROOT_DIRS=""
+
         source build/envsetup.sh
 
         export ALLOW_MISSING_DEPENDENCIES=true
@@ -186,20 +191,13 @@ jobs:
         export OF_MAGISK="/tmp/misc/Magisk.zip"
         export FOX_USE_SPECIFIC_MAGISK_ZIP="/tmp/misc/Magisk.zip"
 
-        # Fix soong namespace pruning
-        unset PRODUCT_SOURCE_ROOT_DIRS
-
-        # Auto-detect đúng lunch combo cho OFox 14.1
-        # OFox 14.1 có thể dùng các release name khác nhau tùy commit
+        # FIX: AndroidProducts.mk của myron chỉ khai báo twrp_myron-eng
+        #      và twrp_myron-userdebug — không dùng release-name format
         DEVICE="${{ github.event.inputs.DEVICE_NAME }}"
         LUNCH_OK=0
 
-        for RELEASE in "" "trunk_staging" "trunk" "ap3a" "ap2a" "ap1a"; do
-          if [ -z "$RELEASE" ]; then
-            COMBO="twrp_${DEVICE}-eng"
-          else
-            COMBO="twrp_${DEVICE}-${RELEASE}-eng"
-          fi
+        for VARIANT in "eng" "userdebug"; do
+          COMBO="twrp_${DEVICE}-${VARIANT}"
           echo "Trying lunch combo: $COMBO"
           lunch "$COMBO" 2>/dev/null && { LUNCH_OK=1; echo "lunch OK: $COMBO"; break; }
         done
