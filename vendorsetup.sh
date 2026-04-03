@@ -37,13 +37,17 @@ export OF_AB_DEVICE_WITH_RECOVERY_PARTITION=1
 export FOX_VIRTUAL_AB_DEVICE=1
 
 # ─── API prebuilts ────────────────────────────────────────────────────────────
-# fox_14.1 base SDK = 34; first_api_level=35 (device shipped with SDK 35, but OFox builds at SDK 34)
-# fox_14.1 supports SDK 35 prebuilts
-# SDK 34 prebuilts (fox_14.1 base)
+# fox_14.1 base SDK = 34; first_api_level=35
 export FOX_ADD_API_V34_PREBUILTS=1
 
-# ─── dmsetup (required for virtual A/B + dynamic partitions) ─────────────────
-export FOX_USE_DMSETUP=1
+# ─── dmctl ───────────────────────────────────────────────────────────────────
+# SM8850 (virtual A/B, kernel 6.12, AIDL boot control): chỉ dùng OF_USE_DMCTL
+# FOX_USE_DMSETUP bị xoá — conflict với OF_USE_DMCTL (orangefox.mk:794)
+export OF_USE_DMCTL=1
+
+# ─── Boot control ─────────────────────────────────────────────────────────────
+# Confirmed: AIDL boot control (kernel 6.12, Android 16)
+export OF_USE_AIDL_BOOT_CONTROL=1
 
 # ─── Compression / binaries ──────────────────────────────────────────────────
 # OF_USE_LZ4_COMPRESSION matches BOARD_RAMDISK_USE_LZ4 := true (BoardConfig)
@@ -69,7 +73,6 @@ export FOX_DELETE_AROMAFM=1
 export OF_NO_MIUI_PATCH_WARNING=1
 export OF_DISABLE_MIUI_OTA_BY_DEFAULT=1
 export OF_USE_GREEN_LED=0
-# FOX_VANILLA_BUILD=1 intentionally removed — enables full OFox feature set
 
 # ─── Partition tools ─────────────────────────────────────────────────────────
 # NOTE: TW_INCLUDE_LPTOOLS, TW_ENABLE_ALL_PARTITION_TOOLS, TW_ENABLE_FS_COMPRESSION
@@ -91,11 +94,6 @@ export OF_FORCE_PREBUILT_KERNEL=1
 export FOX_SETTINGS_ROOT_DIRECTORY=/persist
 export FOX_ALLOW_EARLY_SETTINGS_LOAD=1
 
-# ─── Boot control / USB ──────────────────────────────────────────────────────
-# Confirmed: AIDL boot control (kernel 6.12, Android 16)
-export OF_USE_AIDL_BOOT_CONTROL=1
-export OF_USE_DMCTL=1
-
 # ─── KernelSU support ────────────────────────────────────────────────────────
 export FOX_ENABLE_KERNELSU_SUPPORT=1
 export FOX_ENABLE_KERNELSU_NEXT_SUPPORT=1
@@ -103,7 +101,6 @@ export FOX_ENABLE_SUKISU_SUPPORT=1
 
 # ─── Display ─────────────────────────────────────────────────────────────────
 # Confirmed: 1200x2608 (variant-script.sh), y_offset=111 (bootconfig/BoardConfig)
-# OF_STATUS_INDENT: 48px indent for notch on 1200px-wide screen
 export OF_SCREEN_H=2608
 export OF_STATUS_H=111
 export OF_STATUS_INDENT_LEFT=48
@@ -118,23 +115,9 @@ export FOX_MAINTAINER_PATCH_VERSION=$(date +%y%m%d)
 export OF_MAINTAINER="hackpupg001-a11y"
 
 # ─── Magisk ───────────────────────────────────────────────────────────────────
-# Download Magisk APK (rename to .zip — OFox expects zip format)
-MAGISK_VERSION="v29.0"
-MAGISK_PATH="/tmp/misc/Magisk-${MAGISK_VERSION}.zip"
-export OF_MAGISK="$MAGISK_PATH"
-export FOX_USE_SPECIFIC_MAGISK_ZIP="$MAGISK_PATH"
-
-if [ -f "$MAGISK_PATH" ]; then
-    echo "-- Magisk zip found at $MAGISK_PATH"
-else
-    echo "-- Magisk zip not found, downloading..."
-    mkdir -p /tmp/misc
-    wget -q --show-progress \
-        -O "$MAGISK_PATH" \
-        "https://github.com/topjohnwu/Magisk/releases/download/${MAGISK_VERSION}/Magisk-${MAGISK_VERSION}.apk" \
-    && echo "-- Magisk downloaded OK" \
-    || echo "-- Magisk download FAILED (non-fatal, OFox will skip Magisk embed)"
-fi
+# Path phải khớp với file workflow download vào /tmp/misc/Magisk.zip
+export OF_MAGISK="/tmp/misc/Magisk.zip"
+export FOX_USE_SPECIFIC_MAGISK_ZIP="/tmp/misc/Magisk.zip"
 
 # ─── Splash: set black background ────────────────────────────────────────────
 F=$(find "device" -maxdepth 2 -name "myron" 2>/dev/null)
