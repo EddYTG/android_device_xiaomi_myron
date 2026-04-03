@@ -292,6 +292,9 @@ TW_SUPPORT_INPUT_AIDL_HAPTICS_FQNAME               := "IVibrator/vibratorfeature
 TW_SUPPORT_INPUT_AIDL_HAPTICS_FW_COMPOSER          := false
 TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF              := true
 TW_SUPPORT_INPUT_AIDL_HAPTICS_INSTALL_LEGACY_CHECK := false
+TW_NO_LEGACY_PROPS          := true
+TW_BATTERY_SYSFS_WAIT_SECONDS := 5
+TW_EXCLUDE_APEX := true
 
 # ─────────────────────────────────────────────────────────
 # Misc
