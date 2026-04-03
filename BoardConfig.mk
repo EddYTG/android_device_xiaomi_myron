@@ -295,6 +295,7 @@ TW_SUPPORT_INPUT_AIDL_HAPTICS_INSTALL_LEGACY_CHECK := false
 TW_NO_LEGACY_PROPS          := true
 TW_BATTERY_SYSFS_WAIT_SECONDS := 5
 TW_EXCLUDE_APEX := true
+TW_INCLUDE_LOGICAL := odm
 
 # ─────────────────────────────────────────────────────────
 # Misc
