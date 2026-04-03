@@ -16,9 +16,8 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/emulated_storage.mk)
 $(call inherit-product, vendor/twrp/config/common.mk)
 
 # ─── API level ────────────────────────────────────────────────────────────────
-BOARD_SHIPPING_API_LEVEL   := 34
-PRODUCT_SHIPPING_API_LEVEL := 34
-PRODUCT_TARGET_VNDK_VERSION := 34
+BOARD_SHIPPING_API_LEVEL   := 35
+PRODUCT_SHIPPING_API_LEVEL := 35
 
 # ─── Dynamic partitions ───────────────────────────────────────────────────────
 PRODUCT_USE_DYNAMIC_PARTITIONS := true
@@ -89,28 +88,26 @@ PRODUCT_COPY_FILES += \
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Recovery root files — ODM binaries (NXP JavaCard HSM / Weaver / Vibrator)
-# CRITICAL for decryption: weaver-service.nxp-qti + keymint3.strongbox.nxp
+# CRITICAL for decryption: weaver-service + keymint-service.strongbox
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ODM HAL binaries
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/bin/hw/android.hardware.security.keymint3-service.strongbox.nxp:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/hw/android.hardware.security.keymint3-service.strongbox.nxp \
-    $(DEVICE_PATH)/odm/bin/hw/android.hardware.weaver-service.nxp-qti:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/hw/android.hardware.weaver-service.nxp-qti \
+    $(DEVICE_PATH)/odm/bin/hw/android.hardware.security.keymint-service.strongbox:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/hw/android.hardware.security.keymint-service.strongbox \
+    $(DEVICE_PATH)/odm/bin/hw/android.hardware.weaver-service:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/hw/android.hardware.weaver-service \
     $(DEVICE_PATH)/odm/bin/hw/vendor.xiaomi.hardware.vibratorfeature.service:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/hw/vendor.xiaomi.hardware.vibratorfeature.service
 
 # ODM libs (NXP JavaCard transport + weaver + miauthsecretd)
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/lib64/ese_weaver.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/ese_weaver.so \
-    $(DEVICE_PATH)/odm/lib64/libjc_keymint3.nxp.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libjc_keymint3.nxp.so \
-    $(DEVICE_PATH)/odm/lib64/libjc_keymint_transport_nxp.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libjc_keymint_transport_nxp.so \
-    $(DEVICE_PATH)/odm/lib64/libkeymint_empty-nxp.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libkeymint_empty-nxp.so \
-    $(DEVICE_PATH)/odm/lib64/libweaver_empty-nxp.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libweaver_empty-nxp.so \
-    $(DEVICE_PATH)/odm/lib64/vendor.xiaomi.hardware.miauthsecretd-V1-ndk.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/vendor.xiaomi.hardware.miauthsecretd-V1-ndk.so
-# NOTE: libtensorflowlite_touch_c.so intentionally excluded — touch AI inference only, not needed in recovery
+    $(DEVICE_PATH)/odm/lib64/ese_weaver_thales.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/ese_weaver_thales.so \
+    $(DEVICE_PATH)/odm/lib64/libjc_keymint-thales.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libjc_keymint-thales.so \
+    $(DEVICE_PATH)/odm/lib64/libjc_keymint_transport-thales.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libjc_keymint_transport-thales.so \
+    $(DEVICE_PATH)/odm/lib64/libaachaptics.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libaachaptics.so
+# NOTE: libtensorflowlite_touch_c.so and libtouchreport*.so excluded — touch AI/reporting not needed in recovery
 
 # ODM init RC files
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/etc/init/android.hardware.security.keymint3-service.strongbox.nxp.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/android.hardware.security.keymint3-service.strongbox.nxp.rc \
+    $(DEVICE_PATH)/odm/etc/init/android.hardware.security.keymint-service.strongbox.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/android.hardware.security.keymint-service.strongbox.rc \
     $(DEVICE_PATH)/odm/etc/init/android.hardware.weaver-service.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/android.hardware.weaver-service.rc \
     $(DEVICE_PATH)/odm/etc/init/se_omapi.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/se_omapi.rc \
     $(DEVICE_PATH)/odm/etc/init/prepdecrypt.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/prepdecrypt.rc \
@@ -121,12 +118,23 @@ PRODUCT_COPY_FILES += \
 
 # ODM VINTF manifests
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.keymint3-service.strongbox.nxp.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/android.hardware.security.keymint3-service.strongbox.nxp.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.sharedsecret3-service.strongbox.nxp.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/android.hardware.security.sharedsecret3-service.strongbox.nxp.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.weaver-service.nxp.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/android.hardware.weaver-service.nxp.xml \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest.xml \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml \
     $(DEVICE_PATH)/odm/etc/vintf/manifest/se_omapi.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/se_omapi.xml \
     $(DEVICE_PATH)/odm/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml
 
 # ODM vendor lib64 — miauthsecretd runtime copy (also needed by weaver at runtime)
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/lib64/vendor.xiaomi.hardware.miauthsecretd-V1-ndk.so:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/lib64/vendor.xiaomi.hardware.miauthsecretd-V1-ndk.so
+
+# Haptics firmware (cs40l26) — copy to recovery ramdisk
+PRODUCT_COPY_FILES += \
+    $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26.bin \
+    $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26.wmfw:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26.wmfw \
+    $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26-calib.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26-calib.bin \
+    $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26-calib.wmfw:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26-calib.wmfw \
+    $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26-a2h.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26-a2h.bin \
+    $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26-a2h1.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26-a2h1.bin \
+    $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26-dbc.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26-dbc.bin \
+    $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26-dvl.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26-dvl.bin \
+    $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26-svc.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26-svc.bin

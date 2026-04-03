@@ -1,0 +1,4 @@
+<!-- ODM top-level VINTF manifest for myron (POCO F8 Ultra) -->
+<!-- Individual HAL manifests are in manifest/ subdirectory and auto-merged -->
+<manifest version="2.0" type="device">
+</manifest>

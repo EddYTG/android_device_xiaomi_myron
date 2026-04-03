@@ -12,202 +12,194 @@ on:
         required: true
         default: "fox_14.1"
       DEVICE_PATH:
-        description: "Device path under device/"
+        description: "Device path (relative to device/)"
         required: true
         default: "xiaomi/myron"
       DEVICE_NAME:
         description: "Device codename"
         required: true
         default: "myron"
-      BUILD_PARTITION:
-        description: "Build partition (recovery)"
-        required: true
-        default: "recovery"
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
+    env:
+      DEVICE_NAME: ${{ github.event.inputs.DEVICE_NAME }}
+      DEVICE_PATH: ${{ github.event.inputs.DEVICE_PATH }}
 
     steps:
-    # ──────────────────────────────────────────────────────────────────────────
-    - name: Compute build metadata
-      run: |
-        {
-          echo 'BUILD_INFO<<EOF'
-          echo
-          echo "Device tree url   : ${{ github.event.inputs.DEVICE_TREE_URL }}"
-          echo "Device tree branch: ${{ github.event.inputs.DEVICE_TREE_BRANCH }}"
-          echo "Device path       : ${{ github.event.inputs.DEVICE_PATH }}"
-          echo "Device name       : ${{ github.event.inputs.DEVICE_NAME }}"
-          echo "Build target      : ${{ github.event.inputs.BUILD_PARTITION }}.img"
-          echo "Build date        : $(date)"
-          echo
-          echo EOF
-        } >> "$GITHUB_ENV"
-        echo "BUILD_DATE=$(date +%F)" >> "$GITHUB_ENV"
 
-    # ──────────────────────────────────────────────────────────────────────────
-    - name: Cleanup runner
-      uses: rokibhasansagar/slimhub_actions@main
-
+    # ── 1. Disk / RAM preparation ──────────────────────────────────────────────
     - name: Maximize build space
       uses: easimon/maximize-build-space@master
+      with:
+        root-reserve-mb: 4096
+        swap-size-mb: 8192
+        remove-dotnet: "true"
+        remove-android: "true"
+        remove-haskell: "true"
+        remove-codeql: "true"
 
     - name: Setup ccache
       uses: hendrikmuhs/ccache-action@v1.2
       with:
+        max-size: 5G
         create-symlink: true
+        key: ofox-myron-${{ github.run_id }}
+        restore-keys: ofox-myron-
 
-    # ──────────────────────────────────────────────────────────────────────────
-    - name: Setup zram swap
-      run: |
-        sudo apt-get install -y linux-modules-extra-$(uname -r) zram-tools
-        sudo modprobe zram
-        sudo sed -i 's/^#PERCENT=50/PERCENT=90/' /etc/default/zramswap
-        sudo sed -i 's/^#PRIORITY=100/PRIORITY=1000/' /etc/default/zramswap
-        sudo systemctl restart zramswap
-        zramctl
-
-    # ──────────────────────────────────────────────────────────────────────────
-    - name: Setup build environment
+    # ── 2. Host packages ───────────────────────────────────────────────────────
+    - name: Install build dependencies
       run: |
         export DEBIAN_FRONTEND=noninteractive
-        sudo apt-get update -y && sudo apt-get upgrade -y
-        sudo apt-get install -y repo git wget curl python3
+        sudo apt-get update -y
+        sudo apt-get install -y --no-install-recommends \
+          bc bison build-essential ccache curl flex g++-multilib gcc-multilib \
+          git git-lfs gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev \
+          lib32z1-dev libc6-dev-i386 libelf-dev libgl1-mesa-dev libncurses5 \
+          libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils \
+          lzop pngcrush python3 python3-pip rsync schedtool squashfs-tools \
+          xsltproc zip zlib1g-dev repo lz4
         git config --global user.name  "${{ github.actor }}"
         git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+        git config --global color.ui   false
 
-    # ──────────────────────────────────────────────────────────────────────────
-    - name: Sync TWRP base manifest
+    # ── 3. Sync OrangeFox 14.1 source ─────────────────────────────────────────
+    - name: Sync OrangeFox 14.1 manifest
       run: |
-        repo init -u https://github.com/nebrassy/platform_manifest_twrp_aosp.git -b twrp-14 --depth=1
-        (while true; do echo "Syncing TWRP base..."; sleep 60; done) &
-        TIP_PID=$!
-        repo sync -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
-        kill $TIP_PID || true
+        mkdir -p ~/ofox && cd ~/ofox
+        repo init \
+          -u https://gitlab.com/OrangeFox/sync.git \
+          -b 14.1 \
+          --depth=1 \
+          --git-lfs
+        # keep runner alive while syncing
+        (while true; do echo "$(date +%T) still syncing..."; sleep 60; done) &
+        PING=$!
+        repo sync -j$(nproc) \
+          --force-sync \
+          --no-clone-bundle \
+          --no-tags \
+          --optimized-fetch \
+          --prune
+        kill $PING || true
 
-    # ──────────────────────────────────────────────────────────────────────────
-    - name: Sync OrangeFox 14.1 source
-      run: |
-        git clone https://gitlab.com/OrangeFox/sync.git -b master
-        WORKINGDIR=$(pwd)
-        cd sync
-        ./orangefox_sync.sh --branch 14.1 --path "$WORKINGDIR"
-        cd "$WORKINGDIR"
-
-    # ──────────────────────────────────────────────────────────────────────────
+    # ── 4. Clone device tree ───────────────────────────────────────────────────
     - name: Clone device tree
       run: |
         git clone "${{ github.event.inputs.DEVICE_TREE_URL }}" \
           -b "${{ github.event.inputs.DEVICE_TREE_BRANCH }}" \
-          "device/${{ github.event.inputs.DEVICE_PATH }}"
+          ~/ofox/device/${{ github.event.inputs.DEVICE_PATH }}
 
-    # ──────────────────────────────────────────────────────────────────────────
-    - name: Verify device tree
+    # ── 5. Optional patches ────────────────────────────────────────────────────
+    - name: Apply device patches
       run: |
-        echo "=== Verifying device tree ==="
-        ls "device/${{ github.event.inputs.DEVICE_PATH }}/"
-        echo "=== AndroidProducts.mk ==="
-        cat "device/${{ github.event.inputs.DEVICE_PATH }}/AndroidProducts.mk"
-        echo "=== twrp_${{ github.event.inputs.DEVICE_NAME }}.mk ==="
-        cat "device/${{ github.event.inputs.DEVICE_PATH }}/twrp_${{ github.event.inputs.DEVICE_NAME }}.mk"
-
-    # ──────────────────────────────────────────────────────────────────────────
-    - name: Apply OrangeFox recovery patches
-      run: |
-        WORKINGDIR=$(pwd)
-        PATCH_DIR="$WORKINGDIR/device/${{ github.event.inputs.DEVICE_PATH }}/patches"
+        PATCH_DIR=~/ofox/device/${{ github.event.inputs.DEVICE_PATH }}/patches
         if [ -d "$PATCH_DIR" ] && ls "$PATCH_DIR"/*.patch &>/dev/null; then
-          cd "$WORKINGDIR/bootable/recovery"
-          for patch in "$PATCH_DIR"/*.patch; do
-            echo "Applying patch: $patch"
-            git apply "$patch" || echo "WARN: patch $patch failed (may already be applied)"
+          cd ~/ofox/bootable/recovery
+          for p in "$PATCH_DIR"/*.patch; do
+            echo "Applying: $p"
+            git apply "$p" && echo "OK" || echo "SKIP (may already be applied)"
           done
-          cd "$WORKINGDIR"
         else
-          echo "No patches directory found — skipping"
+          echo "No patches — skipping"
         fi
-        # libmicrohttpd for OrangeFox HTTP server
-        git clone https://github.com/adontoo/android_external_libmicrohttpd \
-          -b ofox-14.1 external/libmicrohttpd 2>/dev/null || true
-        # bionic fix for OrangeFox 14.1
-        rm -rf bionic
-        git clone https://github.com/adontoo/OrangeFox-android_platform_bionic bionic 2>/dev/null || true
 
-    # ──────────────────────────────────────────────────────────────────────────
-    - name: Generate build info file
-      working-directory: device/${{ github.event.inputs.DEVICE_PATH }}
+    # ── 6. Build ───────────────────────────────────────────────────────────────
+    - name: Build OrangeFox recovery
       run: |
-        echo -e "$BUILD_INFO" >> INFO.txt
-        echo "Changelog:" >> INFO.txt
-        set +e
-        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
-        if [ $? -eq 0 ]; then
-          git log "${LAST_TAG}..HEAD" --pretty=format:"- %h %an: %s" >> INFO.txt
-        else
-          git log --pretty=format:"- %h %an: %s" >> INFO.txt
-        fi
-        cat INFO.txt
+        cd ~/ofox
 
-    # ──────────────────────────────────────────────────────────────────────────
-    - name: Build OrangeFox Recovery
-      run: |
-        # ── vendorsetup.sh exports all FOX_ / OF_ vars automatically ─────────
-        # FOX_BUILD_DEVICE must be set before source/lunch
-        export FOX_BUILD_DEVICE="${{ github.event.inputs.DEVICE_NAME }}"
-        export LC_ALL="C"
+        export LC_ALL=C
         export ALLOW_MISSING_DEPENDENCIES=true
+        export BUILD_BROKEN_DUP_RULES=true
+        export BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES=true
+        export FOX_BUILD_DEVICE="${{ github.event.inputs.DEVICE_NAME }}"
 
         # ccache
-        export CCACHE_DIR=.ccache
-        export CCACHE_EXEC=$(command -v ccache)
-        export CCACHE_MAXSIZE=5G
         export USE_CCACHE=1
+        export CCACHE_EXEC=$(which ccache)
+        export CCACHE_DIR=~/.ccache
+        export CCACHE_COMPRESS=1
+        export CCACHE_MAXSIZE=5G
 
-        # ── source envsetup — vendorsetup.sh is auto-sourced here ─────────────
         source build/envsetup.sh
 
-        # ── OrangeFox 14.1 + dedicated recovery: ap2a-eng + recoveryimage ──────
-        #    Confirmed by: koaaN/infiniti, adontoo/sm8750 repos
+        # lunch — OrangeFox 14.1 dùng ap2a-eng variant
         lunch twrp_${{ github.event.inputs.DEVICE_NAME }}-ap2a-eng
 
-        # ── Build ─────────────────────────────────────────────────────────────
-        (while true; do echo "$(date +%T) Building OrangeFox..."; free -h; sleep 15; done) &
-        TIP_PID=$!
-        mka adbd ${{ github.event.inputs.BUILD_PARTITION }}image
-        kill $TIP_PID
+        # keepalive
+        (while true; do
+          echo "$(date +%T) | RAM: $(free -h | awk '/^Mem/{print $3"/"$2}') | DISK: $(df -h ~ | awk 'NR==2{print $3"/"$2}')"
+          sleep 30
+        done) &
+        PING=$!
 
-        # ── Rename outputs ────────────────────────────────────────────────────
-        OUT_DIR="out/target/product/${{ github.event.inputs.DEVICE_NAME }}"
-        SUFFIX="${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}"
+        mka adbd recoveryimage 2>&1 | tee /tmp/build.log
+        STATUS=${PIPESTATUS[0]}
+        kill $PING || true
 
-        if [ -f "$OUT_DIR/${{ github.event.inputs.BUILD_PARTITION }}.img" ]; then
-          mv "$OUT_DIR/${{ github.event.inputs.BUILD_PARTITION }}.img" \
-             "$OUT_DIR/OrangeFox-14.1-${SUFFIX}.img"
-          echo "IMG renamed: OrangeFox-14.1-${SUFFIX}.img"
+        if [ $STATUS -ne 0 ]; then
+          echo ""
+          echo "══════════════ BUILD FAILED — last 100 lines ══════════════"
+          tail -100 /tmp/build.log
+          exit 1
         fi
 
-        ZIP_SRC=$(ls "$OUT_DIR"/OrangeFox*.zip 2>/dev/null | head -1)
-        if [ -n "$ZIP_SRC" ]; then
-          mv "$ZIP_SRC" "$OUT_DIR/OrangeFox-14.1-${SUFFIX}.zip"
-          echo "ZIP renamed: OrangeFox-14.1-${SUFFIX}.zip"
-        else
-          echo "WARNING: No OrangeFox ZIP found in $OUT_DIR"
-          ls "$OUT_DIR"/ || true
+    # ── 7. Collect outputs ─────────────────────────────────────────────────────
+    - name: Collect build artifacts
+      run: |
+        cd ~/ofox
+        OUT=out/target/product/${{ github.event.inputs.DEVICE_NAME }}
+        DATE=$(date +%Y%m%d)
+        TAG="OrangeFox-14.1-${{ github.event.inputs.DEVICE_NAME }}-${DATE}"
+
+        echo "BUILD_DATE=${DATE}" >> $GITHUB_ENV
+        echo "RELEASE_TAG=${TAG}"  >> $GITHUB_ENV
+
+        ls -lh "$OUT"/*.img "$OUT"/*.zip 2>/dev/null || true
+
+        # Rename img
+        if [ -f "$OUT/recovery.img" ]; then
+          mv "$OUT/recovery.img" "$OUT/${TAG}.img"
+          echo "IMG_PATH=$OUT/${TAG}.img" >> $GITHUB_ENV
         fi
 
-    # ──────────────────────────────────────────────────────────────────────────
+        # Rename zip (OrangeFox installer)
+        ZIP=$(ls "$OUT"/OrangeFox*.zip 2>/dev/null | head -1)
+        if [ -n "$ZIP" ]; then
+          mv "$ZIP" "$OUT/${TAG}.zip"
+          echo "ZIP_PATH=$OUT/${TAG}.zip" >> $GITHUB_ENV
+        fi
+
+    # ── 8. Upload build log on failure ────────────────────────────────────────
+    - name: Upload build log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-log-${{ github.run_id }}
+        path: /tmp/build.log
+        retention-days: 7
+
+    # ── 9. Release ─────────────────────────────────────────────────────────────
     - name: Upload to GitHub Release
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox-14.1-${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
-          out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox-14.1-${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.zip
-        name: OrangeFox-14.1-${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}-${{ github.run_id }}
-        tag_name: ${{ env.BUILD_DATE }}-${{ github.run_id }}
-        body_path: device/${{ github.event.inputs.DEVICE_PATH }}/INFO.txt
+          ~/ofox/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/*.img
+          ~/ofox/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/*.zip
+        name: ${{ env.RELEASE_TAG }}
+        tag_name: ${{ env.RELEASE_TAG }}
+        body: |
+          OrangeFox 14.1 for Xiaomi myron (POCO F8 Ultra / Redmi K90 Pro Max)
+          
+          **SoC**: Snapdragon 8 Elite (SM8850)
+          **Branch**: fox_14.1 / Android 16 SDK 36
+          **Build date**: ${{ env.BUILD_DATE }}
+          **Tree**: ${{ github.event.inputs.DEVICE_TREE_URL }}@${{ github.event.inputs.DEVICE_TREE_BRANCH }}
+          **Run**: ${{ github.run_id }}
         fail_on_unmatched_files: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

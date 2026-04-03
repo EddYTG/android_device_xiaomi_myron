@@ -4,21 +4,21 @@
 -->
 <manifest version="8.0" type="device">
     <hal format="aidl">
-        <n>android.hardware.security.keymint</n>
+        <name>android.hardware.security.keymint</name>
         <version>3</version>
         <fqname>IKeyMintDevice/default</fqname>
     </hal>
     <hal format="aidl">
-        <n>android.hardware.security.keymint</n>
+        <name>android.hardware.security.keymint</name>
         <version>3</version>
         <fqname>IRemotelyProvisionedComponent/default</fqname>
     </hal>
     <hal format="aidl">
-        <n>android.hardware.security.secureclock</n>
+        <name>android.hardware.security.secureclock</name>
         <fqname>ISecureClock/default</fqname>
     </hal>
     <hal format="aidl">
-        <n>android.hardware.security.sharedsecret</n>
+        <name>android.hardware.security.sharedsecret</name>
         <fqname>ISharedSecret/default</fqname>
     </hal>
 </manifest>
