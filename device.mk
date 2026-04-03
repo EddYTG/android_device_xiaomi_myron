@@ -96,49 +96,52 @@ PRODUCT_COPY_FILES += \
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ODM HAL binaries
+# FIX: dùng TARGET_COPY_OUT_ODM thay vì TARGET_COPY_OUT_RECOVERY/root/odm/
+# OFox 14.1 rsync tạo symlink root/odm→/odm sau build — nếu root/odm là
+# thư mục thực (có file) thì rsync fail "cannot delete non-empty directory"
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/bin/hw/android.hardware.security.keymint-service.strongbox:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/hw/android.hardware.security.keymint-service.strongbox \
-    $(DEVICE_PATH)/odm/bin/hw/android.hardware.weaver-service:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/hw/android.hardware.weaver-service \
-    $(DEVICE_PATH)/odm/bin/hw/vendor.xiaomi.hardware.vibratorfeature.service:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/hw/vendor.xiaomi.hardware.vibratorfeature.service
+    $(DEVICE_PATH)/odm/bin/hw/android.hardware.security.keymint-service.strongbox:$(TARGET_COPY_OUT_ODM)/bin/hw/android.hardware.security.keymint-service.strongbox \
+    $(DEVICE_PATH)/odm/bin/hw/android.hardware.weaver-service:$(TARGET_COPY_OUT_ODM)/bin/hw/android.hardware.weaver-service \
+    $(DEVICE_PATH)/odm/bin/hw/vendor.xiaomi.hardware.vibratorfeature.service:$(TARGET_COPY_OUT_ODM)/bin/hw/vendor.xiaomi.hardware.vibratorfeature.service
 
 # ODM libs (NXP JavaCard transport + weaver + haptics)
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/lib64/ese_weaver_thales.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/ese_weaver_thales.so \
-    $(DEVICE_PATH)/odm/lib64/libjc_keymint-thales.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libjc_keymint-thales.so \
-    $(DEVICE_PATH)/odm/lib64/libjc_keymint_transport-thales.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libjc_keymint_transport-thales.so \
-    $(DEVICE_PATH)/odm/lib64/libaachaptics.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libaachaptics.so
+    $(DEVICE_PATH)/odm/lib64/ese_weaver_thales.so:$(TARGET_COPY_OUT_ODM)/lib64/ese_weaver_thales.so \
+    $(DEVICE_PATH)/odm/lib64/libjc_keymint-thales.so:$(TARGET_COPY_OUT_ODM)/lib64/libjc_keymint-thales.so \
+    $(DEVICE_PATH)/odm/lib64/libjc_keymint_transport-thales.so:$(TARGET_COPY_OUT_ODM)/lib64/libjc_keymint_transport-thales.so \
+    $(DEVICE_PATH)/odm/lib64/libaachaptics.so:$(TARGET_COPY_OUT_ODM)/lib64/libaachaptics.so
 
 # ODM scripts and misc bins
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/bin/prepdecrypt.sh:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/prepdecrypt.sh \
-    $(DEVICE_PATH)/odm/bin/variant-script.sh:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/variant-script.sh \
-    $(DEVICE_PATH)/odm/bin/se_omapi:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/se_omapi \
-    $(DEVICE_PATH)/odm/bin/touch_report:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/touch_report \
-    $(DEVICE_PATH)/odm/bin/init.kernel.post_boot-sun_default_6_2.sh:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/init.kernel.post_boot-sun_default_6_2.sh
+    $(DEVICE_PATH)/odm/bin/prepdecrypt.sh:$(TARGET_COPY_OUT_ODM)/bin/prepdecrypt.sh \
+    $(DEVICE_PATH)/odm/bin/variant-script.sh:$(TARGET_COPY_OUT_ODM)/bin/variant-script.sh \
+    $(DEVICE_PATH)/odm/bin/se_omapi:$(TARGET_COPY_OUT_ODM)/bin/se_omapi \
+    $(DEVICE_PATH)/odm/bin/touch_report:$(TARGET_COPY_OUT_ODM)/bin/touch_report \
+    $(DEVICE_PATH)/odm/bin/init.kernel.post_boot-sun_default_6_2.sh:$(TARGET_COPY_OUT_ODM)/bin/init.kernel.post_boot-sun_default_6_2.sh
 
 # ODM init RC files
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/etc/init/android.hardware.security.keymint-service.strongbox.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/android.hardware.security.keymint-service.strongbox.rc \
-    $(DEVICE_PATH)/odm/etc/init/android.hardware.weaver-service.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/android.hardware.weaver-service.rc \
-    $(DEVICE_PATH)/odm/etc/init/se_omapi.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/se_omapi.rc \
-    $(DEVICE_PATH)/odm/etc/init/prepdecrypt.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/prepdecrypt.rc \
-    $(DEVICE_PATH)/odm/etc/init/variant-script.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/variant-script.rc \
-    $(DEVICE_PATH)/odm/etc/init/init.kernel.post_boot-sun.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/init.kernel.post_boot-sun.rc \
-    $(DEVICE_PATH)/odm/etc/init/touch_report.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/touch_report.rc \
-    $(DEVICE_PATH)/odm/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc
+    $(DEVICE_PATH)/odm/etc/init/android.hardware.security.keymint-service.strongbox.rc:$(TARGET_COPY_OUT_ODM)/etc/init/android.hardware.security.keymint-service.strongbox.rc \
+    $(DEVICE_PATH)/odm/etc/init/android.hardware.weaver-service.rc:$(TARGET_COPY_OUT_ODM)/etc/init/android.hardware.weaver-service.rc \
+    $(DEVICE_PATH)/odm/etc/init/se_omapi.rc:$(TARGET_COPY_OUT_ODM)/etc/init/se_omapi.rc \
+    $(DEVICE_PATH)/odm/etc/init/prepdecrypt.rc:$(TARGET_COPY_OUT_ODM)/etc/init/prepdecrypt.rc \
+    $(DEVICE_PATH)/odm/etc/init/variant-script.rc:$(TARGET_COPY_OUT_ODM)/etc/init/variant-script.rc \
+    $(DEVICE_PATH)/odm/etc/init/init.kernel.post_boot-sun.rc:$(TARGET_COPY_OUT_ODM)/etc/init/init.kernel.post_boot-sun.rc \
+    $(DEVICE_PATH)/odm/etc/init/touch_report.rc:$(TARGET_COPY_OUT_ODM)/etc/init/touch_report.rc \
+    $(DEVICE_PATH)/odm/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc:$(TARGET_COPY_OUT_ODM)/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc
 
 # ODM VINTF manifests
 # Confirmed from adb shell cat /odm/etc/vintf/manifest/...
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/se_omapi.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/se_omapi.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml
+    $(DEVICE_PATH)/odm/etc/vintf/manifest.xml:$(TARGET_COPY_OUT_ODM)/etc/vintf/manifest.xml \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml:$(TARGET_COPY_OUT_ODM)/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml:$(TARGET_COPY_OUT_ODM)/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest/se_omapi.xml:$(TARGET_COPY_OUT_ODM)/etc/vintf/manifest/se_omapi.xml \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml:$(TARGET_COPY_OUT_ODM)/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml
 
 # ODM ueventd rules
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/etc/ueventd.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/ueventd.rc
+    $(DEVICE_PATH)/odm/etc/ueventd.rc:$(TARGET_COPY_OUT_ODM)/etc/ueventd.rc
 
 # Haptics firmware (cs40l26)
 # Confirmed: ro.odm.mm.vibrator.device_type=agm, resonant_frequency=170 (getprop)
