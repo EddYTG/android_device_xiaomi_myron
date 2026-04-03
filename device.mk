@@ -131,13 +131,16 @@ PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/odm/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc:$(TARGET_COPY_OUT_ODM)/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc
 
 # ODM VINTF manifests
-# Confirmed from adb shell cat /odm/etc/vintf/manifest/...
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest.xml:$(TARGET_COPY_OUT_ODM)/etc/vintf/manifest.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml:$(TARGET_COPY_OUT_ODM)/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml:$(TARGET_COPY_OUT_ODM)/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/se_omapi.xml:$(TARGET_COPY_OUT_ODM)/etc/vintf/manifest/se_omapi.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml:$(TARGET_COPY_OUT_ODM)/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml
+# AOSP 14 cấm PRODUCT_COPY_FILES cho odm/etc/vintf/ — dùng ODM_MANIFEST_FILES
+ODM_MANIFEST_FILES += \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest.xml
+
+ODM_MANIFEST_SKUS += myron
+ODM_MANIFEST_myron_FILES := \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest/se_omapi.xml \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml
 
 # ODM ueventd rules
 PRODUCT_COPY_FILES += \
