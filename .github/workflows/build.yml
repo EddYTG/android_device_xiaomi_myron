@@ -125,6 +125,14 @@ jobs:
         else
           echo "No patches — skipping"
         fi
+        # FIX: OFox 14.1 source thiếu external/libmicrohttpd đúng version
+        #      Clone repo đã được patch cho OFox 14.1
+        git clone https://github.com/adontoo/android_external_libmicrohttpd \
+          -b ofox-14.1 --depth=1 external/libmicrohttpd
+        # FIX: bionic của OFox 14.1 có bug build → replace bằng bản đã fix
+        rm -rf bionic
+        git clone https://github.com/adontoo/OrangeFox-android_platform_bionic \
+          --depth=1 bionic
 
     # ── Download Magisk 37 ─────────────────────────────────────────────────────
     - name: Download Magisk
@@ -167,8 +175,8 @@ jobs:
     # ── Build OrangeFox ────────────────────────────────────────────────────────
     # FIX 1: unset PRODUCT_SOURCE_ROOT_DIRS *trước* envsetup.sh để Soong
     #         không prune external/libmicrohttpd → fix lỗi soong_namespace
-    # FIX 2: lunch combo đúng là twrp_<device>-eng (theo AndroidProducts.mk)
-    #         không dùng release-name format (trunk_staging v.v.)
+    # FIX 2: OFox 14.1 bắt buộc format 3 phần <product>-<release>-<variant>
+    #         AndroidProducts.mk đã được sửa → dùng trunk_staging
     - name: Build OrangeFox
       run: |
         # FIX: phải unset trước khi source envsetup để Soong scan đủ namespace
@@ -191,13 +199,13 @@ jobs:
         export OF_MAGISK="/tmp/misc/Magisk.zip"
         export FOX_USE_SPECIFIC_MAGISK_ZIP="/tmp/misc/Magisk.zip"
 
-        # FIX: AndroidProducts.mk của myron chỉ khai báo twrp_myron-eng
-        #      và twrp_myron-userdebug — không dùng release-name format
+        # Dùng ap2a theo workflow tham khảo của adontoo (đã verified build OK)
+        # Fallback ap3a → trunk_staging nếu ap2a không có
         DEVICE="${{ github.event.inputs.DEVICE_NAME }}"
         LUNCH_OK=0
 
-        for VARIANT in "eng" "userdebug"; do
-          COMBO="twrp_${DEVICE}-${VARIANT}"
+        for RELEASE in "ap2a" "ap3a" "trunk_staging" "trunk"; do
+          COMBO="twrp_${DEVICE}-${RELEASE}-eng"
           echo "Trying lunch combo: $COMBO"
           lunch "$COMBO" 2>/dev/null && { LUNCH_OK=1; echo "lunch OK: $COMBO"; break; }
         done
