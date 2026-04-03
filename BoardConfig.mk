@@ -47,9 +47,9 @@ TARGET_BOOTLOADER_BOARD_NAME := $(PRODUCT_PLATFORM)
 TARGET_NO_BOOTLOADER  := true
 TARGET_USES_UEFI      := true
 
-TARGET_BOARD_PLATFORM := xiaomi_sm8850
+TARGET_BOARD_PLATFORM := sun
 TARGET_BOARD_PLATFORM_GPU := qcom-adreno840
-QCOM_BOARD_PLATFORMS  += xiaomi_sm8850
+QCOM_BOARD_PLATFORMS  += sun
 
 # ─────────────────────────────────────────────────────────
 # Kernel — prebuilt GKI 6.12, boot header v4, vendor_boot style
@@ -193,6 +193,10 @@ BOARD_USES_QCOM_FBE_DECRYPTION   := true
 TW_INCLUDE_CRYPTO                := true
 TW_INCLUDE_CRYPTO_FBE            := true
 TW_INCLUDE_FBE_METADATA_DECRYPT  := true
+
+# KeyMint AIDL — v4 QTI TEE + v3 ODM strongbox (NXP/Thales JavaCard)
+TW_CRYPTO_USE_VENDOR_KEYMINT      := true
+TW_KEYMINT_CLIENT_CONNECT_TIMEOUT := 4000
 TW_USE_FSCRYPT_POLICY            := 2
 
 # Security patch bypass (anti-rollback workaround)
@@ -228,7 +232,7 @@ TW_FRAMERATE             := 120
 TW_BRIGHTNESS_PATH       := "/sys/class/backlight/panel0-backlight/brightness"
 TW_DEFAULT_BRIGHTNESS    := 1200
 TW_MAX_BRIGHTNESS        := 4094
-TW_NO_SCREEN_BLANK       := true
+TW_NO_SCREEN_BLANK  := true
 TW_SCREEN_BLANK_ON_BOOT  := true
 TW_Y_OFFSET              := 111
 TW_H_OFFSET              := -111
@@ -258,6 +262,10 @@ TW_INCLUDE_RESETPROP    := true
 TW_USE_TOOLBOX          := true
 TW_ENABLE_ALL_PARTITION_TOOLS := true
 TW_USE_DMCTL            := true
+TW_USE_QCOM_HAPTICS_VIBRATOR := true
+TW_USE_BATTERY_SYSFS_STATS    := true
+TW_POWER_SUPPLY_BATTERY_PATH  := "/sys/class/power_supply/battery"
+TW_DEFAULT_TIMEZONE           := "Asia/Ho_Chi_Minh"
 
 # ─────────────────────────────────────────────────────────
 # Debug
@@ -273,7 +281,7 @@ RECOVERY_BINARY_SOURCE_FILES += $(TARGET_OUT_EXECUTABLES)/strace
 # Touch: focaltech_touch_3683.ko (FTS IC — confirmed from odm ramdisk)
 # Audio: ADSP modules required for keymint/weaver init chain
 # ─────────────────────────────────────────────────────────
-TW_LOAD_VENDOR_MODULES := "adsp_loader_dlkm.ko q6_dlkm.ko q6_pdr_dlkm.ko q6_notifier_dlkm.ko snd_event_dlkm.ko gpr_dlkm.ko spf_core_dlkm.ko rproc_qcom_common.ko qcom_q6v5.ko qcom_q6v5_pas.ko qcom_sysmon.ko"
+TW_LOAD_VENDOR_MODULES := "focaltech_touch_3683.ko xiaomi_touch.ko adsp_loader_dlkm.ko q6_dlkm.ko q6_pdr_dlkm.ko q6_notifier_dlkm.ko snd_event_dlkm.ko gpr_dlkm.ko spf_core_dlkm.ko rproc_qcom_common.ko qcom_q6v5.ko qcom_q6v5_pas.ko qcom_sysmon.ko"
 TW_LOAD_VENDOR_MODULES_EXCLUDE_GKI := true
 TW_LOAD_PREBUILT_MODULES_AT_FIRST  := true
 
@@ -315,3 +323,5 @@ TW_DEVICE_VERSION     := POCO_F8_Ultra
 # Confirmed: ro.product.first_api_level=35, ro.board.first_api_level=35 (getprop)
 # fox_14.1 builds against SDK 34 AOSP base — BOARD_SYSTEMSDK_VERSIONS=34
 BOARD_SYSTEMSDK_VERSIONS := 34
+# FINGERPRINT
+BUILD_FINGERPRINT := "Redmi/myron/myron:16/BQ2A.250705.001-BP2A.250605.031.A3/OS3.0.303.0.WPMCNXM:user/release-keys"
