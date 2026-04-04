@@ -139,16 +139,8 @@ PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/odm/etc/init/touch_report.rc:$(TARGET_COPY_OUT_ODM)/etc/init/touch_report.rc \
     $(DEVICE_PATH)/odm/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc:$(TARGET_COPY_OUT_ODM)/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc
 
-# ODM init RC files — also copy into recovery/root overlay
-# init.odm.keymint.symlinks.rc MUST be in recovery/root because OFox ramdisk
-# uses recovery/root/ overlay. The TARGET_COPY_OUT_ODM copy above only goes
-# into the odm.img — NOT into the recovery ramdisk at build time.
-# Symlinks (NXP→Thales lib names) must exist at early-init BEFORE weaver/keymint start.
-# android.hardware.weaver-service.rc also copied here because the recovery/root
-# version had wrong class (early_hal); the canonical source (odm/etc/init/) is correct (hal).
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/etc/init/init.odm.keymint.symlinks.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/init.odm.keymint.symlinks.rc \
-    $(DEVICE_PATH)/odm/etc/init/android.hardware.weaver-service.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/android.hardware.weaver-service.rc
+# ODM init RC files are handled via TARGET_COPY_OUT_ODM above.
+# OrangeFox 14.1 creates root/odm symlink automatically — do NOT copy into recovery/root/odm directly.
 
 # ODM VINTF manifests
 # AOSP 14 cấm PRODUCT_COPY_FILES cho odm/etc/vintf/ — dùng ODM_MANIFEST_FILES
