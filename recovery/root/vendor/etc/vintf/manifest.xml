@@ -1,16 +1,24 @@
 <!--
     Vendor VINTF manifest — myron (POCO F8 Ultra / SM8850 sun)
     Confirmed from: adb shell cat /vendor/etc/vintf/manifest.xml (stock ROM)
-    + adb shell cat /vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml
-    
-    NOTE: keymint HAL declared separately in manifest/android.hardware.security.keymint-service-qti.xml
-    Stock manifest.xml only has: gatekeeper, secure_element, NFC, NXP NFC
-    Tree adds keymint entries here for OFox VINTF merge compatibility.
-    
-    REMOVED: HIDL android.hardware.keymaster@4.1 stub — no binary exists,
-    causes VINTF verifier to flag missing service → servicemanager reject → decrypt fail.
+
+    NOTE: android.hardware.keymaster@4.1 entry added FOR OFOX KEYMASTER DETECTION ONLY.
+    OFox R11.x Keymaster_Ver() searches for this HIDL entry to determine decrypt path.
+    Without it, OFox crashes in a loop before falling back (causing 5s UI lag per action).
+    The actual decrypt uses KeyMint AIDL (version 3) — this entry is only for OFox parser.
 -->
 <manifest version="9.0" type="device">
+    <!-- OFox keymaster version detection (HIDL legacy entry required by OFox parser) -->
+    <hal format="hidl">
+        <name>android.hardware.keymaster</name>
+        <transport>hwbinder</transport>
+        <version>4.1</version>
+        <interface>
+            <name>IKeymasterDevice</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <!-- Actual KeyMint AIDL (used for real decrypt) -->
     <hal format="aidl">
         <n>android.hardware.security.keymint</n>
         <version>3</version>

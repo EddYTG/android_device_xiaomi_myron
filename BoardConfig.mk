@@ -237,6 +237,17 @@ TW_SCREEN_BLANK_ON_BOOT  := true
 TW_Y_OFFSET              := 111
 TW_H_OFFSET              := -111
 
+# Touch panel calibration
+# getevent -il shows focaltech_ts reports:
+#   ABS_MT_POSITION_X max=119999  (driver uses 100x scale, real panel=1199)
+#   ABS_MT_POSITION_Y max=260799  (driver uses 100x scale, real panel=2607)
+# Without these flags OFox mis-maps every tap → poll timeout 5s per action
+TW_TOUCHPANEL_MAX_X             := 119999
+TW_TOUCHPANEL_MAX_Y             := 260799
+RECOVERY_TOUCHSCREEN_SWAP_XY    := false
+RECOVERY_TOUCHSCREEN_FLIP_X     := false
+RECOVERY_TOUCHSCREEN_FLIP_Y     := false
+
 # ─────────────────────────────────────────────────────────
 # Storage
 # Confirmed: RECOVERY_SDCARD_ON_DATA — sdcard mounts from /data/media
@@ -310,7 +321,10 @@ TW_INCLUDE_LOGICAL := odm
 # ─────────────────────────────────────────────────────────
 TW_EXTRA_LANGUAGES    := true
 TW_DEFAULT_LANGUAGE   := en
-TW_INPUT_BLACKLIST    := "hbtp_vm"
+# Blacklist non-touch input devices to prevent OFox polling ghost events
+# qcom-hv-haptics: FF-only device, no touch events, causes poll stall
+# uinput-xiaomi:   virtual key device, not a real touchscreen
+TW_INPUT_BLACKLIST    := "hbtp_vm:qcom-hv-haptics:uinput-xiaomi"
 TW_EXCLUDE_APEX       := true
 TW_EXCLUDE_DEFAULT_USB_INIT := true
 TW_HAS_EDL_MODE       := false
