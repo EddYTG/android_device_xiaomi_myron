@@ -49,12 +49,6 @@ on property:ro.crypto.state=encrypted && property:ro.boot.dynamic_partitions=tru
 on property:twrp.variant.files_copied=1
     start odm.vibratorfeature-service
     start odm.touch_report
-    # CRITICAL startup order for NXP/Thales JavaCard decrypt chain:
-    # 1. vendor.qseecomd  — started automatically (class core), TrustZone daemon
-    # 2. vendor.secure_element — started automatically (class hal, on init)
-    # 3. odm.se_omapi     — must start BEFORE weaver (eSE APDU channel provider)
-    # 4. odm.weaver-service  — needs se_omapi eSE channel to read Weaver key slots
-    # 5. odm.keymint-strongbox — needs weaver key + libjc_keymint3.nxp.so symlink
     start odm.se_omapi
     start odm.weaver-service
     start odm.keymint-strongbox

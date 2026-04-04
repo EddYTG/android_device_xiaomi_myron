@@ -106,71 +106,73 @@ PRODUCT_COPY_FILES += \
 # ODM HAL binaries
 # ODM files copied directly into recovery ramdisk /root/odm/ (TARGET_COPY_OUT_ODM→/vendor/odm symlink broken in recovery)
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/bin/hw/android.hardware.security.keymint-service.strongbox:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/hw/android.hardware.security.keymint-service.strongbox \
-    $(DEVICE_PATH)/odm/bin/hw/android.hardware.weaver-service:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/hw/android.hardware.weaver-service \
-    $(DEVICE_PATH)/odm/bin/hw/vendor.xiaomi.hardware.vibratorfeature.service:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/hw/vendor.xiaomi.hardware.vibratorfeature.service
+    $(DEVICE_PATH)/odm/bin/hw/android.hardware.security.keymint-service.strongbox:$(TARGET_COPY_OUT_ODM)/bin/hw/android.hardware.security.keymint-service.strongbox \
+    $(DEVICE_PATH)/odm/bin/hw/android.hardware.weaver-service:$(TARGET_COPY_OUT_ODM)/bin/hw/android.hardware.weaver-service \
+    $(DEVICE_PATH)/odm/bin/hw/vendor.xiaomi.hardware.vibratorfeature.service:$(TARGET_COPY_OUT_ODM)/bin/hw/vendor.xiaomi.hardware.vibratorfeature.service
 
 # ODM libs (NXP JavaCard transport + weaver + haptics)
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/lib64/ese_weaver_thales.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/ese_weaver_thales.so \
-    $(DEVICE_PATH)/odm/lib64/libjc_keymint-thales.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libjc_keymint-thales.so \
-    $(DEVICE_PATH)/odm/lib64/libjc_keymint_transport-thales.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libjc_keymint_transport-thales.so \
-    $(DEVICE_PATH)/odm/lib64/libaachaptics.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libaachaptics.so
+    $(DEVICE_PATH)/odm/lib64/ese_weaver_thales.so:$(TARGET_COPY_OUT_ODM)/lib64/ese_weaver_thales.so \
+    $(DEVICE_PATH)/odm/lib64/libjc_keymint-thales.so:$(TARGET_COPY_OUT_ODM)/lib64/libjc_keymint-thales.so \
+    $(DEVICE_PATH)/odm/lib64/libjc_keymint_transport-thales.so:$(TARGET_COPY_OUT_ODM)/lib64/libjc_keymint_transport-thales.so \
+    $(DEVICE_PATH)/odm/lib64/libaachaptics.so:$(TARGET_COPY_OUT_ODM)/lib64/libaachaptics.so
 
 # ODM Touch libs (required for focaltech_ts driver + xiaomi_touch framework)
 # Confirmed: libtouchreport* needed by touch_report daemon and fts driver
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libtouchreport.so \
-    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_alg.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libtouchreport_alg.so \
-    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_alg_fts.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libtouchreport_alg_fts.so \
-    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_hal.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libtouchreport_hal.so \
-    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_sensor.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libtouchreport_sensor.so \
-    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtensorflowlite_touch_c.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libtensorflowlite_touch_c.so \
-    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/sensors.touch.detect.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/sensors.touch.detect.so
+    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport.so \
+    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_alg.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport_alg.so \
+    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_alg_fts.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport_alg_fts.so \
+    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_hal.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport_hal.so \
+    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_sensor.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport_sensor.so \
+    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtensorflowlite_touch_c.so:$(TARGET_COPY_OUT_ODM)/lib64/libtensorflowlite_touch_c.so \
+    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/sensors.touch.detect.so:$(TARGET_COPY_OUT_ODM)/lib64/sensors.touch.detect.so
 
 # ODM scripts and misc bins
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/bin/prepdecrypt.sh:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/prepdecrypt.sh \
-    $(DEVICE_PATH)/odm/bin/variant-script.sh:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/variant-script.sh \
-    $(DEVICE_PATH)/odm/bin/se_omapi:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/se_omapi \
-    $(DEVICE_PATH)/odm/bin/touch_report:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/touch_report \
-    $(DEVICE_PATH)/odm/bin/toucheventcheck:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/toucheventcheck \
-    $(DEVICE_PATH)/odm/bin/init.kernel.post_boot-sun_default_6_2.sh:$(TARGET_COPY_OUT_RECOVERY)/root/odm/bin/init.kernel.post_boot-sun_default_6_2.sh
+    $(DEVICE_PATH)/odm/bin/prepdecrypt.sh:$(TARGET_COPY_OUT_ODM)/bin/prepdecrypt.sh \
+    $(DEVICE_PATH)/odm/bin/variant-script.sh:$(TARGET_COPY_OUT_ODM)/bin/variant-script.sh \
+    $(DEVICE_PATH)/odm/bin/se_omapi:$(TARGET_COPY_OUT_ODM)/bin/se_omapi \
+    $(DEVICE_PATH)/odm/bin/touch_report:$(TARGET_COPY_OUT_ODM)/bin/touch_report \
+    $(DEVICE_PATH)/odm/bin/toucheventcheck:$(TARGET_COPY_OUT_ODM)/bin/toucheventcheck \
+    $(DEVICE_PATH)/odm/bin/init.kernel.post_boot-sun_default_6_2.sh:$(TARGET_COPY_OUT_ODM)/bin/init.kernel.post_boot-sun_default_6_2.sh
 
 # ODM init RC files
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/etc/init/android.hardware.security.keymint-service.strongbox.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/android.hardware.security.keymint-service.strongbox.rc \
-    $(DEVICE_PATH)/odm/etc/init/android.hardware.weaver-service.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/android.hardware.weaver-service.rc \
-    $(DEVICE_PATH)/odm/etc/init/se_omapi.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/se_omapi.rc \
-    $(DEVICE_PATH)/odm/etc/init/prepdecrypt.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/prepdecrypt.rc \
-    $(DEVICE_PATH)/odm/etc/init/init.odm.keymint.symlinks.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/init.odm.keymint.symlinks.rc \
-    $(DEVICE_PATH)/odm/etc/init/variant-script.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/variant-script.rc \
-    $(DEVICE_PATH)/odm/etc/init/init.kernel.post_boot-sun.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/init.kernel.post_boot-sun.rc \
-    $(DEVICE_PATH)/odm/etc/init/touch_report.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/touch_report.rc \
-    $(DEVICE_PATH)/odm/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc
+    $(DEVICE_PATH)/odm/etc/init/android.hardware.security.keymint-service.strongbox.rc:$(TARGET_COPY_OUT_ODM)/etc/init/android.hardware.security.keymint-service.strongbox.rc \
+    $(DEVICE_PATH)/odm/etc/init/android.hardware.weaver-service.rc:$(TARGET_COPY_OUT_ODM)/etc/init/android.hardware.weaver-service.rc \
+    $(DEVICE_PATH)/odm/etc/init/se_omapi.rc:$(TARGET_COPY_OUT_ODM)/etc/init/se_omapi.rc \
+    $(DEVICE_PATH)/odm/etc/init/prepdecrypt.rc:$(TARGET_COPY_OUT_ODM)/etc/init/prepdecrypt.rc \
+    $(DEVICE_PATH)/odm/etc/init/init.odm.keymint.symlinks.rc:$(TARGET_COPY_OUT_ODM)/etc/init/init.odm.keymint.symlinks.rc \
+    $(DEVICE_PATH)/odm/etc/init/variant-script.rc:$(TARGET_COPY_OUT_ODM)/etc/init/variant-script.rc \
+    $(DEVICE_PATH)/odm/etc/init/init.kernel.post_boot-sun.rc:$(TARGET_COPY_OUT_ODM)/etc/init/init.kernel.post_boot-sun.rc \
+    $(DEVICE_PATH)/odm/etc/init/touch_report.rc:$(TARGET_COPY_OUT_ODM)/etc/init/touch_report.rc \
+    $(DEVICE_PATH)/odm/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc:$(TARGET_COPY_OUT_ODM)/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc
 
 
 # ODM VINTF manifests
-# ODM VINTF manifests — copy trực tiếp vào recovery ramdisk
-# (ODM_MANIFEST_FILES không dùng được khi /odm->/ vendor/odm symlink bị broken)
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/se_omapi.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/se_omapi.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml
+# ODM VINTF manifests
+ODM_MANIFEST_FILES += \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest.xml
+
+ODM_MANIFEST_SKUS += myron
+ODM_MANIFEST_MYRON_FILES := \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest/se_omapi.xml \
+    $(DEVICE_PATH)/odm/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml
 
 # ODM ueventd rules
 PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/etc/ueventd.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/ueventd.rc
+    $(DEVICE_PATH)/odm/etc/ueventd.rc:$(TARGET_COPY_OUT_ODM)/etc/ueventd.rc
 
 # ODM Touch firmware
 # focaltech_ts_fw_myron.bin: copied to /vendor/firmware/ (only path without symlink loop in recovery)
 # myron_fts_thp_config.ini: touch panel config, read by touch_report daemon
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/odm/variant/myron/odm/firmware/focaltech_ts_fw_myron.bin:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/firmware/focaltech_ts_fw_myron.bin \
-    $(DEVICE_PATH)/odm/variant/myron/odm/firmware/myron_fts_thp_config.ini:$(TARGET_COPY_OUT_RECOVERY)/root/odm/firmware/myron_fts_thp_config.ini \
-    $(DEVICE_PATH)/odm/variant/myron/odm/firmware/Conf_MultipleTest.ini:$(TARGET_COPY_OUT_RECOVERY)/root/odm/firmware/Conf_MultipleTest.ini
+    $(DEVICE_PATH)/odm/variant/myron/odm/firmware/myron_fts_thp_config.ini:$(TARGET_COPY_OUT_ODM)/firmware/myron_fts_thp_config.ini \
+    $(DEVICE_PATH)/odm/variant/myron/odm/firmware/Conf_MultipleTest.ini:$(TARGET_COPY_OUT_ODM)/firmware/Conf_MultipleTest.ini
 
 # Haptics firmware (cs40l26)
 # Confirmed: ro.odm.mm.vibrator.device_type=agm, resonant_frequency=170 (getprop)
