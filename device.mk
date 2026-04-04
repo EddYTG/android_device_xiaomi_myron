@@ -88,6 +88,13 @@ PRODUCT_COPY_FILES += \
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/recovery/root/system/etc/vintf/manifest.xml:$(TARGET_COPY_OUT_RECOVERY)/root/system/etc/vintf/manifest.xml
 
+# System libs required by libjc_keymint-thales.so and libjc_keymint_transport-thales.so
+# Confirmed location: /system/lib64/ on stock ROM (not vendor)
+# Required at early-hal stage when /system may not be mounted yet
+PRODUCT_COPY_FILES += \
+    $(DEVICE_PATH)/recovery/root/system/lib64/libsoft_attestation_cert.so:$(TARGET_COPY_OUT_RECOVERY)/root/system/lib64/libsoft_attestation_cert.so \
+    $(DEVICE_PATH)/recovery/root/system/lib64/libhardware_legacy.so:$(TARGET_COPY_OUT_RECOVERY)/root/system/lib64/libhardware_legacy.so
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Recovery root files — ODM binaries
 # Confirmed from adb shell:
@@ -131,6 +138,17 @@ PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/odm/etc/init/init.kernel.post_boot-sun.rc:$(TARGET_COPY_OUT_ODM)/etc/init/init.kernel.post_boot-sun.rc \
     $(DEVICE_PATH)/odm/etc/init/touch_report.rc:$(TARGET_COPY_OUT_ODM)/etc/init/touch_report.rc \
     $(DEVICE_PATH)/odm/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc:$(TARGET_COPY_OUT_ODM)/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc
+
+# ODM init RC files — also copy into recovery/root overlay
+# init.odm.keymint.symlinks.rc MUST be in recovery/root because OFox ramdisk
+# uses recovery/root/ overlay. The TARGET_COPY_OUT_ODM copy above only goes
+# into the odm.img — NOT into the recovery ramdisk at build time.
+# Symlinks (NXP→Thales lib names) must exist at early-init BEFORE weaver/keymint start.
+# android.hardware.weaver-service.rc also copied here because the recovery/root
+# version had wrong class (early_hal); the canonical source (odm/etc/init/) is correct (hal).
+PRODUCT_COPY_FILES += \
+    $(DEVICE_PATH)/odm/etc/init/init.odm.keymint.symlinks.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/init.odm.keymint.symlinks.rc \
+    $(DEVICE_PATH)/odm/etc/init/android.hardware.weaver-service.rc:$(TARGET_COPY_OUT_RECOVERY)/root/odm/etc/init/android.hardware.weaver-service.rc
 
 # ODM VINTF manifests
 # AOSP 14 cấm PRODUCT_COPY_FILES cho odm/etc/vintf/ — dùng ODM_MANIFEST_FILES

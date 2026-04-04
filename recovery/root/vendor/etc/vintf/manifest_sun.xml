@@ -1,11 +1,15 @@
 <!--
-    Input: device/qcom/sun/manifest_sun.xml
-    FIXED: Added keymaster HIDL stub for OrangeFox R11.x Keymaster_Ver parser.
+    Vendor VINTF manifest sun — myron (POCO F8 Ultra / SM8850 sun)
+    Mirror of manifest.xml for sun platform compatibility.
+    Confirmed from: device/qcom/sun/manifest_sun.xml (stock)
+    
+    REMOVED: HIDL android.hardware.keymaster@4.1 stub (no binary, causes VINTF reject)
+    FIXED: keymint version 4→3 to match stock ROM actual binary capability
 -->
 <manifest version="9.0" type="device">
     <hal format="aidl">
         <n>android.hardware.security.keymint</n>
-        <version>4</version>
+        <version>3</version>
         <fqname>IKeyMintDevice/default</fqname>
     </hal>
     <hal format="aidl">
@@ -20,15 +24,5 @@
     <hal format="aidl">
         <n>android.hardware.secure_element</n>
         <fqname>ISecureElement/eSE1</fqname>
-    </hal>
-    <!-- OrangeFox R11.x Keymaster_Ver parser stub — DO NOT REMOVE -->
-    <hal format="hidl">
-        <n>android.hardware.keymaster</n>
-        <transport>hwbinder</transport>
-        <version>4.1</version>
-        <interface>
-            <n>IKeymasterDevice</n>
-            <instance>default</instance>
-        </interface>
     </hal>
 </manifest>
