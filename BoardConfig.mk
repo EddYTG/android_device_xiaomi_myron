@@ -237,16 +237,7 @@ TW_SCREEN_BLANK_ON_BOOT  := true
 TW_Y_OFFSET              := 111
 TW_H_OFFSET              := -111
 
-# Touch panel calibration
-# getevent -il shows focaltech_ts reports:
-#   ABS_MT_POSITION_X max=119999  (driver uses 100x scale, real panel=1199)
-#   ABS_MT_POSITION_Y max=260799  (driver uses 100x scale, real panel=2607)
-# Without these flags OFox mis-maps every tap → poll timeout 5s per action
-TW_TOUCHPANEL_MAX_X             := 119999
-TW_TOUCHPANEL_MAX_Y             := 260799
-RECOVERY_TOUCHSCREEN_SWAP_XY    := false
-RECOVERY_TOUCHSCREEN_FLIP_X     := false
-RECOVERY_TOUCHSCREEN_FLIP_Y     := false
+
 
 # ─────────────────────────────────────────────────────────
 # Storage

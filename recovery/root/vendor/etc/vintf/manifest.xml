@@ -1,13 +1,12 @@
 <!--
     Vendor VINTF manifest — myron (POCO F8 Ultra / SM8850 sun)
-    Confirmed from: adb shell cat /vendor/etc/vintf/manifest.xml (stock ROM)
-
     NOTE: android.hardware.keymaster@4.1 entry added FOR OFOX KEYMASTER DETECTION ONLY.
-    OFox R11.x Keymaster_Ver() searches for this HIDL entry to determine decrypt path.
-    Without it, OFox crashes in a loop before falling back (causing 5s UI lag per action).
+    OFox R11.x/R12.x Keymaster_Ver() searches for this HIDL entry to determine decrypt path.
     The actual decrypt uses KeyMint AIDL (version 3) — this entry is only for OFox parser.
+    FIX: version 9.0→2.0 for libvintf@8.0 compatibility (OFox R11.3/R12.1)
+    FIX: <n>→<name> per libvintf XML schema
 -->
-<manifest version="9.0" type="device">
+<manifest version="2.0" type="device">
     <!-- OFox keymaster version detection (HIDL legacy entry required by OFox parser) -->
     <hal format="hidl">
         <name>android.hardware.keymaster</name>
@@ -20,21 +19,21 @@
     </hal>
     <!-- Actual KeyMint AIDL (used for real decrypt) -->
     <hal format="aidl">
-        <n>android.hardware.security.keymint</n>
+        <name>android.hardware.security.keymint</name>
         <version>3</version>
         <fqname>IKeyMintDevice/default</fqname>
     </hal>
     <hal format="aidl">
-        <n>android.hardware.security.keymint</n>
+        <name>android.hardware.security.keymint</name>
         <version>3</version>
         <fqname>IRemotelyProvisionedComponent/default</fqname>
     </hal>
     <hal format="aidl">
-        <n>android.hardware.gatekeeper</n>
+        <name>android.hardware.gatekeeper</name>
         <fqname>IGatekeeper/default</fqname>
     </hal>
     <hal format="aidl">
-        <n>android.hardware.secure_element</n>
+        <name>android.hardware.secure_element</name>
         <fqname>ISecureElement/eSE1</fqname>
     </hal>
 </manifest>

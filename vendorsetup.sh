@@ -109,6 +109,10 @@ export OF_HIDE_NOTCH=0
 export OF_ALLOW_DISABLE_NAVBAR=0
 export OF_OPTIONS_LIST_NUM=6
 
+# ─── OrangeFox version ───────────────────────────────────────────────────────
+# Phải set để build ra R12.1 thay vì R11.3 (default của source 14.1)
+export FOX_VERSION="R12.1"
+
 # ─── Maintainer / variant ────────────────────────────────────────────────────
 export FOX_VARIANT="Xiaomi_myron_POCO_F8_Ultra"
 export FOX_MAINTAINER_PATCH_VERSION=$(date +%y%m%d)
