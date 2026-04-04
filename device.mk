@@ -119,12 +119,24 @@ PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/odm/lib64/libjc_keymint_transport-thales.so:$(TARGET_COPY_OUT_ODM)/lib64/libjc_keymint_transport-thales.so \
     $(DEVICE_PATH)/odm/lib64/libaachaptics.so:$(TARGET_COPY_OUT_ODM)/lib64/libaachaptics.so
 
+# ODM Touch libs (required for focaltech_ts driver + xiaomi_touch framework)
+# Confirmed: libtouchreport* needed by touch_report daemon and fts driver
+PRODUCT_COPY_FILES += \
+    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport.so \
+    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_alg.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport_alg.so \
+    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_alg_fts.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport_alg_fts.so \
+    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_hal.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport_hal.so \
+    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_sensor.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport_sensor.so \
+    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtensorflowlite_touch_c.so:$(TARGET_COPY_OUT_ODM)/lib64/libtensorflowlite_touch_c.so \
+    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/sensors.touch.detect.so:$(TARGET_COPY_OUT_ODM)/lib64/sensors.touch.detect.so
+
 # ODM scripts and misc bins
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/odm/bin/prepdecrypt.sh:$(TARGET_COPY_OUT_ODM)/bin/prepdecrypt.sh \
     $(DEVICE_PATH)/odm/bin/variant-script.sh:$(TARGET_COPY_OUT_ODM)/bin/variant-script.sh \
     $(DEVICE_PATH)/odm/bin/se_omapi:$(TARGET_COPY_OUT_ODM)/bin/se_omapi \
     $(DEVICE_PATH)/odm/bin/touch_report:$(TARGET_COPY_OUT_ODM)/bin/touch_report \
+    $(DEVICE_PATH)/odm/bin/toucheventcheck:$(TARGET_COPY_OUT_ODM)/bin/toucheventcheck \
     $(DEVICE_PATH)/odm/bin/init.kernel.post_boot-sun_default_6_2.sh:$(TARGET_COPY_OUT_ODM)/bin/init.kernel.post_boot-sun_default_6_2.sh
 
 # ODM init RC files
@@ -157,6 +169,14 @@ ODM_MANIFEST_MYRON_FILES := \
 # ODM ueventd rules
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/odm/etc/ueventd.rc:$(TARGET_COPY_OUT_ODM)/etc/ueventd.rc
+
+# ODM Touch firmware
+# focaltech_ts_fw_myron.bin: copied to /vendor/firmware/ (only path without symlink loop in recovery)
+# myron_fts_thp_config.ini: touch panel config, read by touch_report daemon
+PRODUCT_COPY_FILES += \
+    $(DEVICE_PATH)/odm/variant/myron/odm/firmware/focaltech_ts_fw_myron.bin:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/firmware/focaltech_ts_fw_myron.bin \
+    $(DEVICE_PATH)/odm/variant/myron/odm/firmware/myron_fts_thp_config.ini:$(TARGET_COPY_OUT_ODM)/firmware/myron_fts_thp_config.ini \
+    $(DEVICE_PATH)/odm/variant/myron/odm/firmware/Conf_MultipleTest.ini:$(TARGET_COPY_OUT_ODM)/firmware/Conf_MultipleTest.ini
 
 # Haptics firmware (cs40l26)
 # Confirmed: ro.odm.mm.vibrator.device_type=agm, resonant_frequency=170 (getprop)
