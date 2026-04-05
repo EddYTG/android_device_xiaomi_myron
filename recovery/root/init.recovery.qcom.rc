@@ -46,9 +46,9 @@ on property:ro.crypto.state=encrypted && property:ro.boot.dynamic_partitions=tru
     start odm.prepdecrypt
 
 on property:twrp.variant.files_copied=1
-    # vibratorfeature-service disabled: TW_SUPPORT_INPUT_AIDL_HAPTICS is off,
-    # and service lacks android.hardware.vibrator-V1-ndk.so + libxml2.so → crash-loop
-    # start odm.vibratorfeature-service
+    # vibratorfeature-service: libs (android.hardware.vibrator-V1-ndk.so + libxml2.so)
+    # pulled from /system/lib64/ → placed in recovery/root/odm/lib64/
+    start odm.vibratorfeature-service
     start odm.touch_report
     # CRITICAL startup order for NXP/Thales JavaCard decrypt chain:
     # se_omapi must start BEFORE weaver (eSE APDU channel provider)

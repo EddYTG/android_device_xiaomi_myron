@@ -59,3 +59,8 @@ PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26-dbc.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26-dbc.bin \
     $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26-dvl.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26-dvl.bin \
     $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26-svc.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26-svc.bin
+
+# Haptics AIDL libs — pulled from stock /system/lib64/
+PRODUCT_COPY_FILES += \
+    $(DEVICE_PATH)/recovery/root/odm/lib64/android.hardware.vibrator-V1-ndk.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/android.hardware.vibrator-V1-ndk.so \
+    $(DEVICE_PATH)/recovery/root/odm/lib64/libxml2.so:$(TARGET_COPY_OUT_RECOVERY)/root/odm/lib64/libxml2.so

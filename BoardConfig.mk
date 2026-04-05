@@ -268,13 +268,9 @@ TW_INCLUDE_RESETPROP    := true
 TW_USE_TOOLBOX          := true
 TW_ENABLE_ALL_PARTITION_TOOLS := true
 TW_USE_DMCTL            := true
-# Vibrator: cs40l26 (Cirrus Logic) expose /sys/class/qcom-haptics/vibrator_enable
-# TW_USE_QCOM_HAPTICS_VIBRATOR writes directly to sysfs — does NOT need vibratorfeature service
-# This is different from TW_SUPPORT_INPUT_AIDL_HAPTICS (which calls the HAL service)
-# Confirmed path from variant-script: ro.odm.mm.vibrator.sys_path=/sys/class/qcom-haptics
-TW_USE_QCOM_HAPTICS_VIBRATOR := true
-# Battery: use health HAL AIDL (same as SM8750 — do NOT set sysfs stats)
-# TW_USE_BATTERY_SYSFS_STATS reads sysfs before health HAL init → always 100%
+# TW_USE_QCOM_HAPTICS_VIBRATOR := true  ← disabled: vibratorfeature service not running in recovery → blocks UI 5s per touch
+TW_USE_BATTERY_SYSFS_STATS    := true
+TW_POWER_SUPPLY_BATTERY_PATH  := "/sys/class/power_supply/battery"
 TW_DEFAULT_TIMEZONE           := "Asia/Ho_Chi_Minh"
 
 # ─────────────────────────────────────────────────────────
@@ -305,14 +301,15 @@ TW_LOAD_PREBUILT_MODULES_AT_FIRST  := true
 #   ro.odm.mm.vibrator.device_type=agm
 #   ro.odm.mm.vibrator.resonant_frequency=170
 # ─────────────────────────────────────────────────────────
-# Haptics AIDL disabled — vibratorfeature service không start được trong recovery
-# → mỗi lần chạm OFox block UI thread 5 giây chờ service → đơ toàn bộ UI
-# TW_SUPPORT_INPUT_AIDL_HAPTICS                      := true
-# TW_SUPPORT_INPUT_AIDL_HAPTICS_FQNAME               := "IVibrator/vibratorfeature"
-# TW_SUPPORT_INPUT_AIDL_HAPTICS_FW_COMPOSER          := false
-# TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF              := true
-# TW_SUPPORT_INPUT_AIDL_HAPTICS_INSTALL_LEGACY_CHECK := false
+# Haptics AIDL — libs pulled from /system/lib64/ (android.hardware.vibrator-V1-ndk.so + libxml2.so)
+# placed in recovery/root/odm/lib64/ + LD_LIBRARY_PATH updated in service RC
+TW_SUPPORT_INPUT_AIDL_HAPTICS                      := true
+TW_SUPPORT_INPUT_AIDL_HAPTICS_FQNAME               := "IVibrator/vibratorfeature"
+TW_SUPPORT_INPUT_AIDL_HAPTICS_FW_COMPOSER          := false
+TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF              := true
+TW_SUPPORT_INPUT_AIDL_HAPTICS_INSTALL_LEGACY_CHECK := false
 TW_NO_LEGACY_PROPS          := true
+TW_BATTERY_SYSFS_WAIT_SECONDS := 5
 TW_EXCLUDE_APEX := true
 
 # ─────────────────────────────────────────────────────────
