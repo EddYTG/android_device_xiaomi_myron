@@ -21,12 +21,10 @@ BOARD_SHIPPING_API_LEVEL   := 34
 PRODUCT_SHIPPING_API_LEVEL := 34
 
 # ─── Dynamic partitions ───────────────────────────────────────────────────────
-# Confirmed: ro.boot.dynamic_partitions=true, ro.virtual_ab.enabled=true (getprop)
 PRODUCT_USE_DYNAMIC_PARTITIONS := true
 PRODUCT_VIRTUAL_AB_OTA         := true
 
 # ─── Fuse passthrough ─────────────────────────────────────────────────────────
-# Confirmed: persist.sys.fuse.passthrough.enable=true (getprop)
 PRODUCT_PROPERTY_OVERRIDES += persist.sys.fuse.passthrough.enable=true
 
 # ─── Soong namespaces ─────────────────────────────────────────────────────────
@@ -47,135 +45,10 @@ TWRP_REQUIRED_MODULES += \
     prebuilt
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Recovery root files — Vendor binaries
-# Confirmed from adb shell (stock ROM TWRP ramdisk, same vendor partition sm8850)
-# CRITICAL for Keymint / Gatekeeper / qseecomd decryption chain
-# ─────────────────────────────────────────────────────────────────────────────
-
-# Vendor init RC files
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/init/android.hardware.boot-service.qti.rc:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/init/android.hardware.boot-service.qti.rc \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/init/android.hardware.gatekeeper-service-qti.rc:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/init/android.hardware.gatekeeper-service-qti.rc \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/init/android.hardware.health-service.qti.rc:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/init/android.hardware.health-service.qti.rc \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/init/android.hardware.secure_element-service.qti.rc:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/init/android.hardware.secure_element-service.qti.rc \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/init/android.hardware.security.keymint-service-qti.rc:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/init/android.hardware.security.keymint-service-qti.rc \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/init/qseecomd.rc:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/init/qseecomd.rc \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/init/ssgtzd.rc:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/init/ssgtzd.rc
-
-# Vendor VINTF manifests
-# Confirmed keymint version=3 from odm vintf xml (adb shell)
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/vintf/manifest.xml:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/vintf/manifest.xml \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/vintf/manifest_sun.xml:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/vintf/manifest_sun.xml \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/vintf/manifest/android.hardware.weaver-service.xml:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/vintf/manifest/android.hardware.weaver-service.xml \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/vintf/manifest/android.hardware.health-service.qti.xml:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/vintf/manifest/android.hardware.health-service.qti.xml \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/vintf/manifest/boot-service.qti.xml:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/vintf/manifest/boot-service.qti.xml \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/vintf/manifest/android.hardware.wifi.supplicant.xml:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/vintf/manifest/android.hardware.wifi.supplicant.xml
-
-# Vendor misc configs
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/charger_fw_fstab.qti:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/charger_fw_fstab.qti \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/gpfspath_oem_config.xml:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/gpfspath_oem_config.xml \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/ssg/ta_config.json:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/ssg/ta_config.json \
-    $(DEVICE_PATH)/recovery/root/vendor/etc/ueventd.rc:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/etc/ueventd.rc
-
-# WiFi ko loader script
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/recovery/root/system/bin/cp-wifi-ko.sh:$(TARGET_COPY_OUT_RECOVERY)/root/system/bin/cp-wifi-ko.sh
-
-# System VINTF framework manifest
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/recovery/root/system/etc/vintf/manifest.xml:$(TARGET_COPY_OUT_RECOVERY)/root/system/etc/vintf/manifest.xml
-
-# System libs required by libjc_keymint-thales.so and libjc_keymint_transport-thales.so
-# Confirmed location: /system/lib64/ on stock ROM (not vendor)
-# Required at early-hal stage when /system may not be mounted yet
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/recovery/root/system/lib64/libsoft_attestation_cert.so:$(TARGET_COPY_OUT_RECOVERY)/root/system/lib64/libsoft_attestation_cert.so \
-    $(DEVICE_PATH)/recovery/root/system/lib64/libhardware_legacy.so:$(TARGET_COPY_OUT_RECOVERY)/root/system/lib64/libhardware_legacy.so
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Recovery root files — ODM binaries
-# Confirmed from adb shell:
-#   /odm/bin/hw/ contains keymint-strongbox, weaver-service, vibratorfeature
-#   /odm/lib64/ contains ese_weaver_thales.so, libjc_keymint*.so, libaachaptics.so
-#   init.svc.odm.weaver-service=running, odm.keymint-strongbox=running (getprop)
-# ─────────────────────────────────────────────────────────────────────────────
-
-# ODM HAL binaries
-# ODM files copied directly into recovery ramdisk /root/odm/ (TARGET_COPY_OUT_ODM→/vendor/odm symlink broken in recovery)
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/bin/hw/android.hardware.security.keymint-service.strongbox:$(TARGET_COPY_OUT_ODM)/bin/hw/android.hardware.security.keymint-service.strongbox \
-    $(DEVICE_PATH)/odm/bin/hw/android.hardware.weaver-service:$(TARGET_COPY_OUT_ODM)/bin/hw/android.hardware.weaver-service \
-    $(DEVICE_PATH)/odm/bin/hw/vendor.xiaomi.hardware.vibratorfeature.service:$(TARGET_COPY_OUT_ODM)/bin/hw/vendor.xiaomi.hardware.vibratorfeature.service
-
-# ODM libs (NXP JavaCard transport + weaver + haptics)
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/lib64/ese_weaver_thales.so:$(TARGET_COPY_OUT_ODM)/lib64/ese_weaver_thales.so \
-    $(DEVICE_PATH)/odm/lib64/libjc_keymint-thales.so:$(TARGET_COPY_OUT_ODM)/lib64/libjc_keymint-thales.so \
-    $(DEVICE_PATH)/odm/lib64/libjc_keymint_transport-thales.so:$(TARGET_COPY_OUT_ODM)/lib64/libjc_keymint_transport-thales.so \
-    $(DEVICE_PATH)/odm/lib64/libaachaptics.so:$(TARGET_COPY_OUT_ODM)/lib64/libaachaptics.so
-
-# ODM Touch libs (required for focaltech_ts driver + xiaomi_touch framework)
-# Confirmed: libtouchreport* needed by touch_report daemon and fts driver
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport.so \
-    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_alg.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport_alg.so \
-    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_alg_fts.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport_alg_fts.so \
-    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_hal.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport_hal.so \
-    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtouchreport_sensor.so:$(TARGET_COPY_OUT_ODM)/lib64/libtouchreport_sensor.so \
-    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/libtensorflowlite_touch_c.so:$(TARGET_COPY_OUT_ODM)/lib64/libtensorflowlite_touch_c.so \
-    $(DEVICE_PATH)/odm/variant/myron/odm/lib64/sensors.touch.detect.so:$(TARGET_COPY_OUT_ODM)/lib64/sensors.touch.detect.so
-
-# ODM scripts and misc bins
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/bin/prepdecrypt.sh:$(TARGET_COPY_OUT_ODM)/bin/prepdecrypt.sh \
-    $(DEVICE_PATH)/odm/bin/variant-script.sh:$(TARGET_COPY_OUT_ODM)/bin/variant-script.sh \
-    $(DEVICE_PATH)/odm/bin/se_omapi:$(TARGET_COPY_OUT_ODM)/bin/se_omapi \
-    $(DEVICE_PATH)/odm/bin/touch_report:$(TARGET_COPY_OUT_ODM)/bin/touch_report \
-    $(DEVICE_PATH)/odm/bin/toucheventcheck:$(TARGET_COPY_OUT_ODM)/bin/toucheventcheck \
-    $(DEVICE_PATH)/odm/bin/init.kernel.post_boot-sun_default_6_2.sh:$(TARGET_COPY_OUT_ODM)/bin/init.kernel.post_boot-sun_default_6_2.sh
-
-# ODM init RC files
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/etc/init/android.hardware.security.keymint-service.strongbox.rc:$(TARGET_COPY_OUT_ODM)/etc/init/android.hardware.security.keymint-service.strongbox.rc \
-    $(DEVICE_PATH)/odm/etc/init/android.hardware.weaver-service.rc:$(TARGET_COPY_OUT_ODM)/etc/init/android.hardware.weaver-service.rc \
-    $(DEVICE_PATH)/odm/etc/init/se_omapi.rc:$(TARGET_COPY_OUT_ODM)/etc/init/se_omapi.rc \
-    $(DEVICE_PATH)/odm/etc/init/prepdecrypt.rc:$(TARGET_COPY_OUT_ODM)/etc/init/prepdecrypt.rc \
-    $(DEVICE_PATH)/odm/etc/init/init.odm.keymint.symlinks.rc:$(TARGET_COPY_OUT_ODM)/etc/init/init.odm.keymint.symlinks.rc \
-    $(DEVICE_PATH)/odm/etc/init/variant-script.rc:$(TARGET_COPY_OUT_ODM)/etc/init/variant-script.rc \
-    $(DEVICE_PATH)/odm/etc/init/init.kernel.post_boot-sun.rc:$(TARGET_COPY_OUT_ODM)/etc/init/init.kernel.post_boot-sun.rc \
-    $(DEVICE_PATH)/odm/etc/init/touch_report.rc:$(TARGET_COPY_OUT_ODM)/etc/init/touch_report.rc \
-    $(DEVICE_PATH)/odm/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc:$(TARGET_COPY_OUT_ODM)/etc/init/vendor.xiaomi.hardware.vibratorfeature.service.rc
-
-
-# ODM VINTF manifests
-# ODM VINTF manifests
-ODM_MANIFEST_FILES += \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest.xml
-
-ODM_MANIFEST_SKUS += myron
-ODM_MANIFEST_MYRON_FILES := \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.keymint-service.strongbox.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/android.hardware.security.sharedsecret-service.strongbox.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/se_omapi.xml \
-    $(DEVICE_PATH)/odm/etc/vintf/manifest/vendor.xiaomi.hardware.vibratorfeature.service.xml
-
-# ODM ueventd rules
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/etc/ueventd.rc:$(TARGET_COPY_OUT_ODM)/etc/ueventd.rc
-
-# ODM Touch firmware
-# focaltech_ts_fw_myron.bin: copied to /vendor/firmware/ (only path without symlink loop in recovery)
-# myron_fts_thp_config.ini: touch panel config, read by touch_report daemon
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/odm/variant/myron/odm/firmware/focaltech_ts_fw_myron.bin:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/firmware/focaltech_ts_fw_myron.bin \
-    $(DEVICE_PATH)/odm/variant/myron/odm/firmware/myron_fts_thp_config.ini:$(TARGET_COPY_OUT_ODM)/firmware/myron_fts_thp_config.ini \
-    $(DEVICE_PATH)/odm/variant/myron/odm/firmware/Conf_MultipleTest.ini:$(TARGET_COPY_OUT_ODM)/firmware/Conf_MultipleTest.ini
-
-# Haptics firmware (cs40l26)
+# Haptics firmware (cs40l26) — prebuilt, NOT in recovery/root/
+# All other recovery root files are in recovery/root/ (SM8750 pattern)
 # Confirmed: ro.odm.mm.vibrator.device_type=agm, resonant_frequency=170 (getprop)
+# ─────────────────────────────────────────────────────────────────────────────
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26.bin \
     $(DEVICE_PATH)/prebuilt/lib/firmware/cs40l26.wmfw:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/cs40l26.wmfw \

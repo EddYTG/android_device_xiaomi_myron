@@ -166,13 +166,17 @@ BOARD_XIAOMI_DYNAMIC_PARTITIONS_PARTITION_LIST := \
 
 # Filesystem types
 TARGET_COPY_OUT_VENDOR     := vendor
-TARGET_COPY_OUT_ODM        := odm
-BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := erofs
 BOARD_USES_VENDOR_DLKMIMAGE := true
 TARGET_COPY_OUT_VENDOR_DLKM := vendor_dlkm
 BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_TYPE := erofs
 
-# EROFS confirmed for all logical partitions from recovery.fstab
+# ODM — explicitly declared (matches SM8750 reference pattern)
+# SINGLE SOURCE: recovery/root/odm/ only. Top-level odm/ removed.
+TARGET_COPY_OUT_ODM             := odm
+BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := erofs
+
+# EROFS for all logical partitions (confirmed from recovery.fstab)
+# TARGET_COPY_OUT_ODM above takes precedence; foreach re-sets to same value.
 BOARD_PARTITION_LIST := $(call to-upper, $(BOARD_XIAOMI_DYNAMIC_PARTITIONS_PARTITION_LIST))
 $(foreach p, $(BOARD_PARTITION_LIST), $(eval BOARD_$(p)IMAGE_FILE_SYSTEM_TYPE := erofs))
 $(foreach p, $(BOARD_PARTITION_LIST), $(eval TARGET_COPY_OUT_$(p) := $(call to-lower,$(p))))
@@ -212,7 +216,7 @@ BOOT_SECURITY_PATCH          := $(PLATFORM_SECURITY_PATCH)
 # ─────────────────────────────────────────────────────────
 TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
 TARGET_RECOVERY_QCOM_RTC_FIX := true
-TARGET_RECOVERY_FSTAB        := $(DEVICE_PATH)/recovery/root/recovery.fstab
+TARGET_RECOVERY_FSTAB        := $(DEVICE_PATH)/recovery.fstab
 TW_INCLUDE_FASTBOOTD         := true
 TW_SKIP_ADDITIONAL_FSTAB     := true
 TARGET_SYSTEM_PROP           += $(DEVICE_PATH)/system.prop
@@ -307,7 +311,6 @@ TW_LOAD_PREBUILT_MODULES_AT_FIRST  := true
 TW_NO_LEGACY_PROPS          := true
 TW_BATTERY_SYSFS_WAIT_SECONDS := 5
 TW_EXCLUDE_APEX := true
-TW_INCLUDE_LOGICAL := odm
 
 # ─────────────────────────────────────────────────────────
 # Misc
