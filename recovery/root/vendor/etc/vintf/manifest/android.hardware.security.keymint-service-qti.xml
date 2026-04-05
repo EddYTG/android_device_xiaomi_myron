@@ -1,26 +1,28 @@
 <!--
-    FIXED: stock vendor uses broken <n> tags, this overrides with correct <name> tags
-    Stock /vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml
-    ships with <n> (invalid) causing NULL VINTF manifest, servicemanager/keystore2 crash loop.
-    Stock ROM: version=3, binary=onekeymint-service-qti, service=vendor.keymint-qti
+    Input:
+        vendor/qcom/proprietary/securemsm/keymaster_utils/android.hardware.security.keymint-service-qti.xml
+    Confirmed: adb shell cat /vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml
+    Stock ROM declares version=3, NOT version=4.
+    Binary: android.hardware.security.onekeymint-service-qti (SM8850/sun platform uses onekeymint)
+    Service name: vendor.keymint-qti (confirmed init.svc.vendor.keymint-qti=running from getprop)
 -->
 <manifest version="8.0" type="device">
     <hal format="aidl">
-        <name>android.hardware.security.keymint</name>
+        <n>android.hardware.security.keymint</n>
         <version>3</version>
         <fqname>IKeyMintDevice/default</fqname>
     </hal>
     <hal format="aidl">
-        <name>android.hardware.security.keymint</name>
+        <n>android.hardware.security.keymint</n>
         <version>3</version>
         <fqname>IRemotelyProvisionedComponent/default</fqname>
     </hal>
     <hal format="aidl">
-        <name>android.hardware.security.secureclock</name>
+        <n>android.hardware.security.secureclock</n>
         <fqname>ISecureClock/default</fqname>
     </hal>
     <hal format="aidl">
-        <name>android.hardware.security.sharedsecret</name>
+        <n>android.hardware.security.sharedsecret</n>
         <fqname>ISharedSecret/default</fqname>
     </hal>
 </manifest>
