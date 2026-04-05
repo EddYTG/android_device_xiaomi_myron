@@ -4,9 +4,9 @@
     OFox R11.x/R12.x Keymaster_Ver() searches for this HIDL entry to determine decrypt path.
     The actual decrypt uses KeyMint AIDL (version 3) — this entry is only for OFox parser.
     FIX: version 9.0→2.0 for libvintf@8.0 compatibility (OFox R11.3/R12.1)
-    FIX: <n>→<name> per libvintf XML schema
+    FIX: <name>→<name> per libvintf XML schema
 -->
-<manifest version="2.0" type="device">
+<manifest version="8.0" type="device">
     <!-- OFox keymaster version detection (HIDL legacy entry required by OFox parser) -->
     <hal format="hidl">
         <name>android.hardware.keymaster</name>

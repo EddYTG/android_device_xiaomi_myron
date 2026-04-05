@@ -1,6 +1,6 @@
 <manifest version="1.0" type="device">
     <hal format="aidl">
-        <n>android.se.omapi</n>
+        <name>android.se.omapi</name>
         <fqname>ISecureElementService/default</fqname>
     </hal>
 </manifest>
