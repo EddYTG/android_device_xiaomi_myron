@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2024, The Linux Foundation. All rights reserved.
+# Copyright (c) 2017-2026, The Linux Foundation. All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import /init.recovery.wifi.rc
@@ -32,32 +32,47 @@ on boot
     setprop sys.usb.config adb
 
 on property:twrp.modules.loaded=true
-    # Mount firmware for ADSP
+    # Mount firmware partition cho ADSP (cần cho KeyMint chain)
     mkdir /firmware
     mount vfat /dev/block/bootdevice/by-name/modem${ro.boot.slot_suffix} /firmware ro
-    # Load ADSP firmware for PMIC / KeyMint chain
+
+    # Boot ADSP — cần cho q6/audio pipeline của keymint-strongbox
     wait /sys/kernel/boot_adsp/ssr
     write /sys/kernel/boot_adsp/ssr 1
-    wait /sys/class/power_supply/battery
+
+    # Chờ battery sysfs (myron: mca_business_battery driver)
+    wait /sys/class/power_supply/battery 5
     start vendor.health-default
-    umount /vendor
+
+    # Symlink firmware vào /vendor/firmware_mnt (KHÔNG umount /vendor)
+    # Lưu ý: KHÔNG umount /vendor ở đây — vendor libs vẫn đang được
+    # dùng bởi vendor.keymint-qti, gatekeeper, secure_element
     symlink /firmware /vendor/firmware_mnt
 
 on property:ro.crypto.state=encrypted && property:ro.boot.dynamic_partitions=true
     start odm.prepdecrypt
 
 on property:twrp.variant.files_copied=1
-    # vibratorfeature-service: libs (android.hardware.vibrator-V1-ndk.so + libxml2.so)
-    # pulled from /system/lib64/ → placed in recovery/root/odm/lib64/
-    start odm.vibratorfeature-service
-    start odm.touch_report
-    # CRITICAL startup order for NXP/Thales JavaCard decrypt chain:
-    # se_omapi must start BEFORE weaver (eSE APDU channel provider)
-    # weaver needs se_omapi eSE channel to read Weaver key slots
-    # keymint-strongbox needs weaver key + libjc_keymint symlinks
+    # CRITICAL STARTUP ORDER — Thales JavaCard decrypt chain:
+    #
+    # 1. se_omapi TRƯỚC TIÊN: cung cấp APDU channel tới eSE
+    #    se_omapi cần vendor.secure_element (ISecureElement/eSE1)
+    # 2. odm.weaver-service: đọc Weaver key slots qua se_omapi
+    #    Cần ese_weaver.so symlink (đã được tạo ở post-fs)
+    # 3. odm.keymint-strongbox: dùng weaver key + libjc_keymint
+    #    Cần lib_android_keymaster_keymint_utils_V3.so symlink
+    #
+    # vibrator và touch_report không phụ thuộc vào chain này
+
     start odm.se_omapi
     start odm.weaver-service
     start odm.keymint-strongbox
+
+    # Vibrator: start độc lập
+    start odm.vibratorfeature-service
+
+    # Touch report: start độc lập
+    start odm.touch_report
 
 on property:crypto.ready=1
     start odm.umountvendor

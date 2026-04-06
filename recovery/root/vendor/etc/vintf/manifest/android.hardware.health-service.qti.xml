@@ -1,8 +1,9 @@
 <!--
-    Input:
-        vendor/qcom/opensource/healthd-ext/aidl/android.hardware.health-service.qti.xml
+    Health AIDL HAL manifest fragment — myron
+    Được merge bởi libvintf vào tổng device manifest.
+    servicemanager dùng manifest tổng này để allow AServiceManager_addService()
 -->
-<manifest version="8.0" type="device">
+<manifest version="2.0" type="device">
     <hal format="aidl">
         <name>android.hardware.health</name>
         <version>3</version>

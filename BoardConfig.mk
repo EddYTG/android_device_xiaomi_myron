@@ -270,6 +270,9 @@ TW_ENABLE_ALL_PARTITION_TOOLS := true
 TW_USE_DMCTL            := true
 # TW_USE_QCOM_HAPTICS_VIBRATOR := true  ← disabled: vibratorfeature service not running in recovery → blocks UI 5s per touch
 TW_USE_BATTERY_SYSFS_STATS    := true
+# myron: mca_business_battery driver exposes battery ở path platform-specific
+# Confirmed từ logcat AVC audit: soc:mca_business_battery/power_supply/battery/capacity
+# Path ngắn /sys/class/power_supply/battery là symlink kernel tạo tự động → OK
 TW_POWER_SUPPLY_BATTERY_PATH  := "/sys/class/power_supply/battery"
 TW_DEFAULT_TIMEZONE           := "Asia/Ho_Chi_Minh"
 
@@ -309,7 +312,9 @@ TW_SUPPORT_INPUT_AIDL_HAPTICS_FW_COMPOSER          := false
 TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF              := true
 TW_SUPPORT_INPUT_AIDL_HAPTICS_INSTALL_LEGACY_CHECK := false
 TW_NO_LEGACY_PROPS          := true
-TW_BATTERY_SYSFS_WAIT_SECONDS := 5
+# Tăng wait time: mca_business_battery driver cần ~1.7s để probe (dmesg)
+# 8 giây đủ margin kể cả khi ADSP boot chậm
+TW_BATTERY_SYSFS_WAIT_SECONDS := 8
 TW_EXCLUDE_APEX := true
 
 # ─────────────────────────────────────────────────────────

@@ -1,8 +1,8 @@
 # Recovery linker namespace config — myron (SM8850 / sun)
-# LD_LIBRARY_PATH trong RC files đã cover runtime search,
-# nhưng ld.config.txt cần khai báo đủ path cho linker namespace
-# để vendor/odm binaries có thể dlopen cross-namespace correctly.
-dir.recovery = /system/bin
+# FIXED: Thêm /odm/lib64 vào đầu search path (Thales JavaCard libs)
+# FIXED: LD_CONFIG_FILE path: /ld.config.txt (root của ramdisk)
+
+dir.recovery     = /system/bin
 dir.vendor_recovery = /vendor/bin
 dir.vendor_recovery = /vendor/bin/hw
 dir.odm_recovery = /odm/bin
@@ -10,25 +10,21 @@ dir.odm_recovery = /odm/bin/hw
 
 [recovery]
 namespace.default.isolated = false
-namespace.default.search.paths = /system/${LIB}
+namespace.default.search.paths  = /odm/${LIB}
+namespace.default.search.paths += /system/${LIB}
 namespace.default.search.paths += /vendor/${LIB}
 namespace.default.search.paths += /vendor/${LIB}/hw
-namespace.default.search.paths += /odm/${LIB}
-namespace.default.asan.search.paths = /data/asan/system/${LIB}
-namespace.default.asan.search.paths += /system/${LIB}
-namespace.default.hwasan.search.paths = /system/${LIB}/hwasan
-namespace.default.hwasan.search.paths += /system/${LIB}
 
 [vendor_recovery]
 namespace.default.isolated = false
-namespace.default.search.paths = /vendor/${LIB}
+namespace.default.search.paths  = /odm/${LIB}
+namespace.default.search.paths += /vendor/${LIB}
 namespace.default.search.paths += /vendor/${LIB}/hw
-namespace.default.search.paths += /odm/${LIB}
 namespace.default.search.paths += /system/${LIB}
 
 [odm_recovery]
 namespace.default.isolated = false
-namespace.default.search.paths = /odm/${LIB}
+namespace.default.search.paths  = /odm/${LIB}
 namespace.default.search.paths += /vendor/${LIB}
 namespace.default.search.paths += /vendor/${LIB}/hw
 namespace.default.search.paths += /system/${LIB}
