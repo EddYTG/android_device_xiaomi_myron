@@ -1,0 +1,42 @@
+# system.prop — Xiaomi myron (POCO F8 Ultra / Redmi K90 Pro Max)
+# All values confirmed from adb shell getprop + /proc/bootconfig (stock ROM)
+#
+# ro.board.platform=xiaomi_sm8850 (getprop)
+# ro.product.board=sun (getprop)
+# ro.boot.dynamic_partitions=true (getprop)
+# ro.virtual_ab.enabled=true (getprop)
+# ro.virtual_ab.compression.enabled=true (getprop)
+# persist.sys.fuse.passthrough.enable=true (getprop)
+# androidboot.usbcontroller=a600000.dwc3 (/proc/bootconfig)
+# vendor.gatekeeper.disable_spu — needed for QCOM gatekeeper without SPU
+#
+
+ro.adb.secure=0
+ro.board.platform=sun
+ro.product.board=sun
+ro.boot.dynamic_partitions=true
+ro.virtual_ab.enabled=true
+ro.virtual_ab.compression.enabled=true
+
+# USB — confirmed from /proc/bootconfig: androidboot.usbcontroller=a600000.dwc3
+ro.recovery.usb.vid=18D1
+ro.recovery.usb.adb.pid=D001
+ro.recovery.usb.fastboot.pid=4EE0
+vendor.usb.configfs=1
+
+# Gatekeeper — disable SPU path (QCOM TZ-only gatekeeper)
+vendor.gatekeeper.disable_spu=true
+vendor.gatekeeper.is_security_level_spu=0
+
+# Display
+ro.minui.pixel_format=RGBX_8888
+ro.minui.overscan_percent=0
+
+# Fuse passthrough — confirmed getprop
+persist.sys.fuse.passthrough.enable=true
+
+# Boot device UFS path — confirmed from ro.boot.bootdevice (getprop)
+ro.boot.bootdevice=1d84000.ufshc
+# Keymint
+ro.hardware.keystore_desede=true
+ro.build.fingerprint=Redmi/myron/myron:16/BQ2A.250705.001-BP2A.250605.031.A3/OS3.0.303.0.WPMCNXM:user/release-keys

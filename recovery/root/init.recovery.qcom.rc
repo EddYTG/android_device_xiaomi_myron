@@ -1,0 +1,81 @@
+# Copyright (c) 2017-2026, The Linux Foundation. All rights reserved.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+import /init.recovery.wifi.rc
+
+on init
+    start vendor.boot-qti
+    setprop prepdecrypt.setpatch true
+
+on early-fs
+    write /proc/sys/walt/sched_lib_name "recovery,magiskboot,Updater,updater,update_engine_sideload"
+    write /proc/sys/walt/sched_lib_mask_force 255
+
+on fs
+    wait /dev/block/platform/soc/${ro.boot.bootdevice}
+    symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
+    write /proc/sys/kernel/firmware_config/force_sysfs_fallback 1
+    chmod 0660 /dev/qseecom
+    chown system drmrpc /dev/qseecom
+    chmod 0664 /dev/ion
+    chown system system /dev/ion
+    mkdir /mnt/vendor 0775 shell system
+    mkdir /mnt/vendor/persist 0775 shell system
+    mkdir /tmp/persist 0775 shell system
+    mount none /tmp/persist /mnt/vendor/persist bind rec
+    install_keyring
+
+on post-fs
+    start odm.variant-script
+
+on boot
+    setprop sys.usb.config adb
+
+on property:twrp.modules.loaded=true
+    # Mount firmware partition cho ADSP (cần cho KeyMint chain)
+    mkdir /firmware
+    mount vfat /dev/block/bootdevice/by-name/modem${ro.boot.slot_suffix} /firmware ro
+
+    # Boot ADSP — cần cho q6/audio pipeline của keymint-strongbox
+    wait /sys/kernel/boot_adsp/ssr
+    write /sys/kernel/boot_adsp/ssr 1
+
+    # Chờ battery sysfs (myron: mca_business_battery driver)
+    wait /sys/class/power_supply/battery 5
+    start vendor.health-default
+
+    # Symlink firmware vào /vendor/firmware_mnt (KHÔNG umount /vendor)
+    # Lưu ý: KHÔNG umount /vendor ở đây — vendor libs vẫn đang được
+    # dùng bởi vendor.keymint-qti, gatekeeper, secure_element
+    symlink /firmware /vendor/firmware_mnt
+
+on property:ro.crypto.state=encrypted && property:ro.boot.dynamic_partitions=true
+    start odm.prepdecrypt
+
+on property:twrp.variant.files_copied=1
+    # CRITICAL STARTUP ORDER — Thales JavaCard decrypt chain:
+    #
+    # 1. se_omapi TRƯỚC TIÊN: cung cấp APDU channel tới eSE
+    #    se_omapi cần vendor.secure_element (ISecureElement/eSE1)
+    # 2. odm.weaver-service: đọc Weaver key slots qua se_omapi
+    #    Cần ese_weaver.so symlink (đã được tạo ở post-fs)
+    # 3. odm.keymint-strongbox: dùng weaver key + libjc_keymint
+    #    Cần lib_android_keymaster_keymint_utils_V3.so symlink
+    #
+    # vibrator và touch_report không phụ thuộc vào chain này
+
+    start odm.se_omapi
+    start odm.weaver-service
+    start odm.keymint-strongbox
+
+    # Vibrator: start độc lập
+    start odm.vibratorfeature-service
+
+    # Touch report: start độc lập
+    start odm.touch_report
+
+on property:crypto.ready=1
+    start odm.umountvendor
+
+on property:hwservicemanager.ready=true
+    setprop sys.boot_completed 1
