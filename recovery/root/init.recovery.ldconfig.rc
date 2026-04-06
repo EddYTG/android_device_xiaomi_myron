@@ -1,6 +1,0 @@
-# LD_CONFIG_FILE: Trỏ tới ld.config.txt ở root của ramdisk
-# File này được đặt tại recovery/root/ld.config.txt → runtime: /ld.config.txt
-# Mỗi service RC đã có setenv LD_LIBRARY_PATH riêng → linker config này
-# là safety net cho các process không có LD_LIBRARY_PATH set.
-on fs
-    export LD_CONFIG_FILE /ld.config.txt
