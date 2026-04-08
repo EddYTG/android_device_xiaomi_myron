@@ -1,0 +1,183 @@
+# Copyright (c) 2017-2024, The Linux Foundation. All rights reserved.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+#
+# Platform: myron (SM8850 / canoe) - 国行版 Redmi K90 Pro Max
+# Android Version: 16 (HyperOS 3.0.305.4) - 临时禁用加密验证 UI
+
+import /init.recovery.wifi.rc
+
+on early-init
+    # 暴力挂载 SELinux 并强制放行（双重保险）
+    mkdir /sys/fs/selinux 0 0 0 0
+    mount selinuxfs selinuxfs /sys/fs/selinux
+    write /sys/fs/selinux/enforce 0
+    
+    # 在极早期启动 AIDL/HIDL 服务大管家（防止 Recovery 进程注册接口时崩溃）
+    start servicemanager
+    start hwservicemanager
+
+on init
+    # 启动 A/B 槽位引导控制服务
+    start vendor.boot-qti
+    setprop prepdecrypt.setpatch true
+    
+    # 【新增】强制跳过加密检测，直接进入主菜单（临时方案）
+    setprop ro.crypto.state unencrypted
+    setprop twrp.decrypt.done true
+    setprop crypto.ready 0
+
+on early-fs
+    # WALT 调度优化
+    write /proc/sys/walt/sched_lib_name "recovery,magiskboot,Updater,updater,update_engine_sideload"
+    write /proc/sys/walt/sched_lib_mask_force 255
+
+on fs
+    wait /dev/block/platform/soc/${ro.boot.bootdevice}
+    symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
+    write /proc/sys/kernel/firmware_config/force_sysfs_fallback 1
+    
+    # TEE 设备节点权限（KeyMint/qseecomd 必需）
+    chmod 0660 /dev/qseecom
+    chown system drmrpc /dev/qseecom
+    chmod 0664 /dev/ion
+    chown system system /dev/ion
+    
+    # 持久化存储目录
+    mkdir /mnt/vendor 0775 shell system
+    mkdir /mnt/vendor/persist 0775 shell system
+    mkdir /tmp/persist 0775 shell system
+    mount none /tmp/persist /mnt/vendor/persist bind rec
+    install_keyring
+
+on post-fs
+    # Recovery 专用变体识别脚本
+    start odm.variant-script
+
+on boot
+    setprop sys.usb.config adb
+
+on property:twrp.modules.loaded=true
+    # 挂载 modem 固件分区
+    mkdir /firmware
+    mount vfat /dev/block/bootdevice/by-name/modem${ro.boot.slot_suffix} /firmware ro
+    
+    # ADSP 触发
+    wait /sys/kernel/boot_adsp/ssr 2
+    write /sys/kernel/boot_adsp/ssr 1 2>/dev/null || echo "ADSP trigger skipped"
+    
+    wait /sys/class/power_supply/battery
+    start vendor.health-default
+    
+    # NXP 硬件解密读取底层固件必需！
+    symlink /firmware /vendor/firmware_mnt
+
+# 【注释掉】加密检测触发（暂时禁用）
+# on property:ro.crypto.state=encrypted && property:ro.boot.dynamic_partitions=true
+#     start odm.prepdecrypt
+
+on property:twrp.variant.files_copied=1
+    # 确保服务管理器已就绪（双重保险）
+    wait_for_prop hwservicemanager.ready true
+    
+    start odm.touch_report
+    
+    # ==========================================
+    # 【临时禁用】加密服务启动链（库版本冲突，暂时跳过）
+    # 直接设置属性让 Recovery 进入主菜单
+    # ==========================================
+    
+    # 强制标记解密完成，跳过密码输入界面
+    setprop twrp.decrypt.done true
+    setprop ro.crypto.state unencrypted
+    
+    # 【注释掉】Android 14 兼容 KeyMint 启动链（暂时禁用）
+    # start keystore2
+    # wait_for_prop init.svc.keystore2 running 3
+    # start vendor.keymint-qti
+    # wait_for_prop init.svc.vendor.keymint-qti running 3
+    # start vendor.gatekeeper_default
+    # wait /dev/socket/gatekeeper 3
+
+on property:hwservicemanager.ready=true
+    setprop sys.boot_completed 1
+
+# ============================================
+# 核心底层服务定义
+# ============================================
+
+# AIDL 服务管理器
+service servicemanager /system/bin/servicemanager
+    class core
+    user system
+    group system readproc
+    critical
+    onrestart restart hwservicemanager
+    seclabel u:r:recovery:s0
+
+# HIDL 硬件服务管理器
+service hwservicemanager /system/bin/hwservicemanager
+    class core
+    user system
+    group system
+    critical
+    onrestart setprop hwservicemanager.ready false
+    seclabel u:r:recovery:s0
+
+# 【注释掉】Keystore2 服务（Android 14 库与系统库冲突，暂时禁用）
+# service keystore2 /system/bin/keystore2
+#     class core
+#     user root
+#     group root
+#     setenv LD_LIBRARY_PATH /system/lib64:/vendor/lib64:/system/lib64:/sbin
+#     seclabel u:r:recovery:s0
+
+# 【注释掉】QTI KeyMint 服务（依赖 keystore2，暂时禁用）
+# service vendor.keymint-qti /vendor/bin/hw/android.hardware.security.onekeymint-service-qti
+#     class early_hal
+#     user root
+#     group root
+#     setenv LD_LIBRARY_PATH /vendor/lib64:/system/lib64:/system/lib64:/sbin
+#     seclabel u:r:recovery:s0
+#     disabled
+
+# 引导控制服务
+service vendor.boot-qti /vendor/bin/hw/android.hardware.boot-service.qti
+    user root
+    group root
+    setenv LD_LIBRARY_PATH /odm/lib64:/vendor/lib64:/system/lib64
+    seclabel u:r:recovery:s0
+    disabled
+
+# 电池健康服务
+service vendor.health-default /vendor/bin/hw/android.hardware.health-service.qti
+    user root
+    group root
+    setenv LD_LIBRARY_PATH /odm/lib64:/vendor/lib64:/system/lib64
+    seclabel u:r:recovery:s0
+    disabled
+
+# 【注释掉】QSEECOMD - TEE 通信层（库冲突，暂时禁用）
+# service vendor.qseecomd /vendor/bin/qseecomd
+#     class core
+#     user root
+#     group root
+#     setenv LD_LIBRARY_PATH /odm/lib64:/vendor/lib64:/system/lib64
+#     seclabel u:r:recovery:s0
+
+# 【注释掉】Gatekeeper - 密码/图案验证（依赖 keymint，暂时禁用）
+# service vendor.gatekeeper_default /vendor/bin/hw/android.hardware.gatekeeper-rust-service-qti
+#     class early_hal
+#     user root
+#     group root
+#     setenv LD_LIBRARY_PATH /odm/lib64:/vendor/lib64:/system/lib64
+#     seclabel u:r:recovery:s0
+#     disabled
+
+# 【注释掉】NXP StrongBox 服务（ABI 不兼容，暂不使用）
+# service odm.keymint-strongbox /odm/bin/hw/android.hardware.security.keymint3-service.strongbox.nxp
+#     class early_hal
+#     user root
+#     group root
+#     setenv LD_LIBRARY_PATH /odm/lib64:/vendor/lib64:/system/lib64
+#     disabled
+#     seclabel u:r:recovery:s0
