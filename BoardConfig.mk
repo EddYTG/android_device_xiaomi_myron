@@ -1,14 +1,15 @@
 #
 # Copyright (C) 2026 The OrangeFox Recovery Project
-# Device : Redmi K90 Pro Max (myron)
-# SoC    : Snapdragon 8 Elite Gen 5 (SM8850 / canoe)
+# Device : Xiaomi POCO F8 Ultra / Redmi K90 Pro Max (myron)
+# SoC    : Snapdragon 8 Elite Gen 5 (SM8850 / sun)
 # Branch : OrangeFox 14.1
 #
 # Confirmed from:
 #   fastboot getvar all  (partition sizes, slots, logical flags)
-#   adb shell getprop    (platform, board, first_api_level=35, fbe params)
+#   adb shell getprop    (platform=canoe, soc=SM8850, first_api_level=202504, fbe params)
 #   adb shell /proc/cmdline + /proc/bootconfig
 #   adb shell /odm vintf manifests (keymint v3, weaver, vibrator fqname)
+#   kernel: 6.12.23-android16-5 (uname -r)
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -40,16 +41,22 @@ ENABLE_SCHEDBOOST := true
 
 # ─────────────────────────────────────────────────────────
 # Platform
-# Confirmed: ro.board.platform=canoe, ro.product.board=canoe (getprop)
+# Confirmed from getprop:
+#   ro.board.platform=canoe  (runtime hardware codename — NOT "xiaomi_sm8850")
+#   ro.soc.model=SM8850, ro.soc.manufacturer=QTI
+#   ro.product.board=sun     (AOSP/build reference name)
+# TARGET_BOARD_PLATFORM stays "sun" — this is what QCOM/AOSP build system expects.
+# "canoe" = kernel/hardware codename; "sun" = SoC family build target.
+# debugcc-alor + debugcc-canoe modules in /proc/modules confirm canoe platform.
 # ─────────────────────────────────────────────────────────
-PRODUCT_PLATFORM      := canoe
+PRODUCT_PLATFORM      := sun
 TARGET_BOOTLOADER_BOARD_NAME := $(PRODUCT_PLATFORM)
 TARGET_NO_BOOTLOADER  := true
 TARGET_USES_UEFI      := true
 
-TARGET_BOARD_PLATFORM := canoe
+TARGET_BOARD_PLATFORM := sun
 TARGET_BOARD_PLATFORM_GPU := qcom-adreno840
-QCOM_BOARD_PLATFORMS  += canoe
+QCOM_BOARD_PLATFORMS  += sun
 
 # ─────────────────────────────────────────────────────────
 # Kernel — prebuilt GKI 6.12, boot header v4, vendor_boot style
@@ -64,15 +71,12 @@ BOARD_KERNEL_IMAGE_NAME   := Image
 BOARD_BOOT_HEADER_VERSION := 4
 BOARD_KERNEL_PAGESIZE     := 4096
 TARGET_KERNEL_CLANG_COMPILE := true
-# TARGET_PREBUILT_KERNEL    := $(DEVICE_PATH)/prebuilt/kernel
-TARGET_KERNEL_SOURCE := $(LOCAL_PATH)/kernel
-TARGET_KERNEL_CONFIG := myron_defconfig
+TARGET_PREBUILT_KERNEL    := $(DEVICE_PATH)/prebuilt/kernel
 BOARD_MKBOOTIMG_ARGS      += --header_version $(BOARD_BOOT_HEADER_VERSION)
 BOARD_MKBOOTIMG_ARGS      += --pagesize $(BOARD_KERNEL_PAGESIZE)
 BOARD_RAMDISK_USE_LZ4     := true
 
-# Kernel lives in boot (GKI 38MB Image+DTB), vendor_boot contains vendor ramdisk
-# Do NOT embed kernel in recovery.img (loaded from boot_b by bootloader)
+# Kernel lives in vendor_boot — do NOT embed in recovery.img
 BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true
 
 # Empty cmdline — all params via bootconfig (confirmed /proc/cmdline vs /proc/bootconfig)
@@ -88,15 +92,17 @@ BOARD_KERNEL_CMDLINE :=
 #   BOARD_USES_RECOVERY_AS_BOOT = false
 #
 # AB_OTA_PARTITIONS confirmed from:
-#   ro.product.ab_ota_partitions (getprop stock ROM):
+#   adb shell ls /dev/block/mapper/ → mi_ext_a tồn tại → mi_ext CÓ slot A/B
 #   boot,dtbo,init_boot,odm,product,system,system_dlkm,
-#   system_ext,vbmeta,vbmeta_system,vendor,vendor_boot,vendor_dlkm
+#   system_ext,vbmeta,vbmeta_system,vendor,vendor_boot,vendor_dlkm,mi_ext
+#   neo_inject_a cũng có _a slot nhưng là Xiaomi-internal, không managed bởi OFox
 # ─────────────────────────────────────────────────────────
 AB_OTA_UPDATER   := true
 AB_OTA_PARTITIONS += \
     boot \
     dtbo \
     init_boot \
+    mi_ext \
     odm \
     product \
     system \
@@ -106,9 +112,8 @@ AB_OTA_PARTITIONS += \
     vbmeta_system \
     vendor \
     vendor_boot \
-    vendor_dlkm \
-    mi_ext
-	
+    vendor_dlkm
+
 BOARD_USES_RECOVERY_AS_BOOT             := false
 BOARD_RECOVERY_NEEDS_BOOTLOADER_CONTROL := true
 
@@ -151,9 +156,9 @@ TARGET_USERIMAGES_USE_F2FS         := true
 #   system, system_ext, product, vendor, vendor_dlkm, odm,
 #   system_dlkm, mi_ext, neo_inject
 #
-# OFox R12.1 accepts max 7 partition names in PARTITION_LIST.
-# system_dlkm MUST be included (is-logical=yes, in AB_OTA).
-# neo_inject has no _b slot → not managed by OFox.
+# Confirmed from adb shell ls /dev/block/mapper/:
+#   mi_ext_a → mi_ext IS logical + has A/B slot → included in list
+#   neo_inject_a → Xiaomi-internal partition, NOT managed by OFox → excluded
 # ─────────────────────────────────────────────────────────
 BOARD_SUPER_PARTITION_SIZE := 14495514624
 BOARD_SUPER_PARTITION_GROUPS := xiaomi_dynamic_partitions
@@ -167,7 +172,7 @@ BOARD_XIAOMI_DYNAMIC_PARTITIONS_PARTITION_LIST := \
     odm \
     system_dlkm \
     mi_ext
-	
+
 # Filesystem types
 TARGET_COPY_OUT_VENDOR     := vendor
 BOARD_USES_VENDOR_DLKMIMAGE := true
@@ -187,14 +192,29 @@ $(foreach p, $(BOARD_PARTITION_LIST), $(eval TARGET_COPY_OUT_$(p) := $(call to-l
 
 # ─────────────────────────────────────────────────────────
 # Crypto / FBE
-# Confirmed from getprop:
-#   fbe.contents=aes-256-xts
-#   fbe.filenames=aes-256-cts:v2+inlinecrypt_optimized+wrappedkey_v0
-#   metadata.contents=aes-256-xts
-#   metadata.filenames=wrappedkey_v0
-#   prepdecrypt.setpatch=true
-# Confirmed from odm vintf: keymint v3 (strongbox NXP JavaCard)
-#   weaver-service runs from /odm/bin/hw/android.hardware.weaver-service
+#
+# SOURCE OF TRUTH: recovery.fstab userdata line (exact values):
+#
+#   /data mount options:
+#     inlinecrypt,gc_merge
+#   fs_mgr flags:
+#     fileencryption=aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized+wrappedkey_v0
+#     keydirectory=/metadata/vold/metadata_encryption
+#     metadata_encryption=aes-256-xts:wrappedkey_v0
+#
+#   /metadata flags:
+#     wrappedkey,first_stage_mount
+#
+# Encryption type: FBE v2 (fscrypt policy v2)
+#   - contents:  aes-256-xts  (hardware inline crypto engine)
+#   - filenames: aes-256-cts
+#   - flags:     v2 + inlinecrypt_optimized + wrappedkey_v0
+#
+# Metadata encryption: aes-256-xts with wrappedkey_v0
+#   wrappedkey_v0 = hardware-wrapped key via Weaver/Thales JavaCard (se_omapi chain)
+#
+# KeyMint chain: vendor.keymint-qti (TEE/default) + odm.keymint-strongbox (Thales JavaCard)
+#   se_omapi → eSE1 → weaver → keymint-strongbox → wrappedkey derivation
 # ─────────────────────────────────────────────────────────
 BOARD_USES_METADATA_PARTITION    := true
 BOARD_USES_QCOM_FBE_DECRYPTION   := true
@@ -202,10 +222,23 @@ TW_INCLUDE_CRYPTO                := true
 TW_INCLUDE_CRYPTO_FBE            := true
 TW_INCLUDE_FBE_METADATA_DECRYPT  := true
 
-# KeyMint AIDL — v4 QTI TEE + v3 ODM strongbox (NXP/Thales JavaCard)
+# fscrypt policy v2 — confirmed from fstab: v2+inlinecrypt_optimized+wrappedkey_v0
+TW_USE_FSCRYPT_POLICY := 2
+
+# Inline crypto engine — /data is mounted with inlinecrypt flag (fstab confirmed)
+TW_CRYPTO_INLINECRYPT := true
+
+# FBE exact params from fstab
+TW_CRYPTO_FS_TYPE     := f2fs
+TW_CRYPTO_MNT_POINT   := /data
+TW_CRYPTO_FS_OPTIONS  := noatime,nosuid,nodev,discard,reserve_root=32768,resgid=1065,fsync_mode=nobarrier,inlinecrypt,gc_merge
+TW_CRYPTO_KEY_LOC     := /metadata/vold/metadata_encryption
+TW_CRYPTO_FS_FLAGS    := "v2+inlinecrypt_optimized+wrappedkey_v0"
+
+# KeyMint AIDL — QTI TEE (default) + Thales JavaCard strongbox (ODM)
+# Timeout 8s: se_omapi → eSE1 APDU handshake cần ~3-5s trên myron
 TW_CRYPTO_USE_VENDOR_KEYMINT      := true
-TW_KEYMINT_CLIENT_CONNECT_TIMEOUT := 4000
-TW_USE_FSCRYPT_POLICY            := 2
+TW_KEYMINT_CLIENT_CONNECT_TIMEOUT := 8000
 
 # Security patch bypass (anti-rollback workaround)
 # Confirmed: version-os=99.87.36 (fastboot), ro.build.version.release=99.87.36 (getprop)
@@ -241,9 +274,7 @@ TW_BRIGHTNESS_PATH       := "/sys/class/backlight/panel0-backlight/brightness"
 TW_DEFAULT_BRIGHTNESS    := 1200
 TW_MAX_BRIGHTNESS        := 4094
 TW_NO_SCREEN_BLANK  := true
-TW_SCREEN_BLANK_ON_BOOT  := false
-TARGET_USES_DRM_PP := true
-BOARD_DISABLE_FB_PANNING := true
+TW_SCREEN_BLANK_ON_BOOT  := true
 TW_Y_OFFSET              := 111
 TW_H_OFFSET              := -111
 
@@ -276,6 +307,9 @@ TW_ENABLE_ALL_PARTITION_TOOLS := true
 TW_USE_DMCTL            := true
 # TW_USE_QCOM_HAPTICS_VIBRATOR := true  ← disabled: vibratorfeature service not running in recovery → blocks UI 5s per touch
 TW_USE_BATTERY_SYSFS_STATS    := true
+# myron: mca_business_battery driver exposes battery ở path platform-specific
+# Confirmed từ logcat AVC audit: soc:mca_business_battery/power_supply/battery/capacity
+# Path ngắn /sys/class/power_supply/battery là symlink kernel tạo tự động → OK
 TW_POWER_SUPPLY_BATTERY_PATH  := "/sys/class/power_supply/battery"
 TW_DEFAULT_TIMEZONE           := "Asia/Ho_Chi_Minh"
 
@@ -289,12 +323,12 @@ RECOVERY_BINARY_SOURCE_FILES += $(TARGET_OUT_EXECUTABLES)/debuggerd
 RECOVERY_BINARY_SOURCE_FILES += $(TARGET_OUT_EXECUTABLES)/strace
 
 # ─────────────────────────────────────────────────────────
-# Vendor modules (kernel modules for touch / WiFi / TEE / ADSP)
+# Vendor modules (kernel modules for touch / audio / ADSP)
+# Touch: focaltech_touch_3683.ko (FTS IC — confirmed from odm ramdisk)
+# Audio: ADSP modules required for keymint/weaver init chain
 # ─────────────────────────────────────────────────────────
-TW_LOAD_VENDOR_MODULES := "panel_event_notifier.ko gh_irq_lend.ko msm_drm.ko xiaomi_touch.ko focaltech_touch_3683.ko qsee_ipc_irq_bridge.ko hdcp_qseecom_dlkm.ko smcinvoke_dlkm.ko cnss_prealloc.ko cnss_nl.ko wlan_firmware_service.ko cfg80211.ko qca_cld3_peach_v2.ko adsp_loader_dlkm.ko q6_dlkm.ko q6_pdr_dlkm.ko q6_notifier_dlkm.ko snd_event_dlkm.ko gpr_dlkm.ko spf_core_dlkm.ko rproc_qcom_common.ko qcom_q6v5.ko qcom_q6v5_pas.ko qcom_sysmon.ko"
-# GKI 时代 Recovery 模块加载行为控制
+TW_LOAD_VENDOR_MODULES := "focaltech_touch_3683.ko xiaomi_touch.ko adsp_loader_dlkm.ko q6_dlkm.ko q6_pdr_dlkm.ko q6_notifier_dlkm.ko snd_event_dlkm.ko gpr_dlkm.ko spf_core_dlkm.ko rproc_qcom_common.ko qcom_q6v5.ko qcom_q6v5_pas.ko qcom_sysmon.ko"
 TW_LOAD_VENDOR_MODULES_EXCLUDE_GKI := true
-TW_LOAD_VENDOR_MODULES_EXCLUDE_DEFAULT_MODULES := true
 TW_LOAD_PREBUILT_MODULES_AT_FIRST  := true
 
 # ─────────────────────────────────────────────────────────
@@ -315,7 +349,9 @@ TW_SUPPORT_INPUT_AIDL_HAPTICS_FW_COMPOSER          := false
 TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF              := true
 TW_SUPPORT_INPUT_AIDL_HAPTICS_INSTALL_LEGACY_CHECK := false
 TW_NO_LEGACY_PROPS          := true
-TW_BATTERY_SYSFS_WAIT_SECONDS := 5
+# Tăng wait time: mca_business_battery driver cần ~1.7s để probe (dmesg)
+# 8 giây đủ margin kể cả khi ADSP boot chậm
+TW_BATTERY_SYSFS_WAIT_SECONDS := 8
 TW_EXCLUDE_APEX := true
 
 # ─────────────────────────────────────────────────────────
@@ -333,11 +369,13 @@ TW_HAS_EDL_MODE       := false
 TW_USE_SERIALNO_PROPERTY_FOR_DEVICE_ID := true
 TW_CUSTOM_CPU_TEMP_PATH := "/sys/class/thermal/thermal_zone45/temp"
 TW_BACKUP_EXCLUSIONS  := /data/fonts
-TW_DEVICE_VERSION     := Redmi_K90_ProMax
+TW_DEVICE_VERSION     := POCO_F8_Ultra
 
 # SDK versions
-# Confirmed: ro.product.first_api_level=35, ro.board.first_api_level=35 (getprop)
+# Confirmed from getprop:
+#   ro.board.first_api_level=202504 (format YYYYMM = April 2025, NOT an API level integer)
+#   ro.bootimage.build.version.sdk=36 → Android 16
 # fox_14.1 builds against SDK 34 AOSP base — BOARD_SYSTEMSDK_VERSIONS=34
 BOARD_SYSTEMSDK_VERSIONS := 34
 # FINGERPRINT
-BUILD_FINGERPRINT := "Redmi/myron/myron:16/BP2A.250605.031.A3/OS3.0.305.4.WPMCNXM:user/release-keys"
+BUILD_FINGERPRINT := "Redmi/myron/myron:16/BQ2A.250705.001-BP2A.250605.031.A3/OS3.0.303.0.WPMCNXM:user/release-keys"

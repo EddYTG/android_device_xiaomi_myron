@@ -2,7 +2,7 @@
 # Copyright (C) 2026 OrangeFox Recovery Project
 # Device: Xiaomi myron (POCO F8 Ultra / Redmi K90 Pro Max)
 # Branch: OrangeFox 14.1
-# SoC   : Snapdragon 8 Elite Gen 5 (SM8850 / canoe)
+# SoC   : Snapdragon 8 Elite Gen 5 (SM8850 / sun)
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -16,7 +16,8 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/emulated_storage.mk)
 $(call inherit-product, vendor/twrp/config/common.mk)
 
 # ─── API level ────────────────────────────────────────────────────────────────
-# Confirmed: ro.product.first_api_level=35, ro.board.first_api_level=35 (getprop)
+# ro.board.first_api_level=202504 (format YYYYMM, April 2025 — NOT an integer API level)
+# ro.bootimage.build.version.sdk=36 → Android 16
 BOARD_SHIPPING_API_LEVEL   := 34
 PRODUCT_SHIPPING_API_LEVEL := 34
 
@@ -26,6 +27,9 @@ PRODUCT_VIRTUAL_AB_OTA         := true
 
 # ─── Fuse passthrough ─────────────────────────────────────────────────────────
 PRODUCT_PROPERTY_OVERRIDES += persist.sys.fuse.passthrough.enable=true
+
+# ─── OrangeFox-specific settings ─────────────────────────────────────────────
+$(call inherit-product, $(LOCAL_PATH)/fox_myron.mk)
 
 # ─── Soong namespaces ─────────────────────────────────────────────────────────
 PRODUCT_SOONG_NAMESPACES += $(DEVICE_PATH)
@@ -40,19 +44,11 @@ PRODUCT_PACKAGES += \
 PRODUCT_EXTRA_RECOVERY_KEYS += \
     $(DEVICE_PATH)/security/releasekey
 
-# ─── Required modules ─────────────────────────────────────────────────────────
-TWRP_REQUIRED_MODULES += \
-    prebuilt
+# ─────────────────────────────────────────────────────────────────────────────
+# Haptics: myron dùng qcom-hv-haptics (PMIC-based) — confirmed từ /proc/modules:
+#   qcom_hv_haptics 118784 1 - Live
+# cs40l26 KHÔNG có trong /vendor_dlkm/lib/modules/ → không phải kernel module
+# vibratorfeature binary dùng PAL → qcom-hv-haptics path, KHÔNG đọc /lib/firmware/
+# → KHÔNG cần prebuilt firmware files trong recovery ramdisk
+# ─────────────────────────────────────────────────────────────────────────────
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Haptics firmware (RTP effects) — prebuilt, NOT in recovery/root/
-# All other recovery root files are in recovery/root/ (SM8750 pattern)
-# Confirmed: ro.odm.mm.vibrator.device_type=agm, resonant_frequency=170 (getprop)
-# ─────────────────────────────────────────────────────────────────────────────
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/prebuilt/lib/firmware/0_click_P_RTP.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/0_click_P_RTP.bin \
-    $(DEVICE_PATH)/prebuilt/lib/firmware/1_doubelClick_P_RTP.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/1_doubelClick_P_RTP.bin \
-    $(DEVICE_PATH)/prebuilt/lib/firmware/2_tick_P_RTP.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/2_tick_P_RTP.bin \
-    $(DEVICE_PATH)/prebuilt/lib/firmware/3_thud_P_RTP.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/3_thud_P_RTP.bin \
-    $(DEVICE_PATH)/prebuilt/lib/firmware/4_pop_P_RTP.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/4_pop_P_RTP.bin \
-    $(DEVICE_PATH)/prebuilt/lib/firmware/5_heavyClick_P_RTP.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/5_heavyClick_P_RTP.bin
