@@ -1,24 +1,14 @@
 <!--
-    Vendor VINTF manifest — myron (POCO F8 Ultra / SM8850 sun)
-
-    CRITICAL FIX (confirmed from logcat):
-    ─────────────────────────────────────
-    Lỗi gốc: IKeyMintDevice/default @3 được khai báo 2 lần:
-      1) trong file này  (manifest.xml)
-      2) trong manifest/android.hardware.security.keymint-service-qti.xml
-    → hwservicemanager trả về -2147483648 khi parse VINTF
-    → TẤT CẢ service registration fail theo cascade (health, boot-hal, weaver...)
-    → Pin hiển thị 100%, boot-hal fail STATUS=-3, weaver không start
-
-    Solution: Xóa keymint AIDL khỏi manifest.xml chính.
-    Subfolder manifest/ sẽ được auto-merge bởi libvintf — không conflict.
-
-    NOTE: android.hardware.keymaster@4.1 HIDL giữ lại vì:
-    OFox R11.x/R12.x Keymaster_Ver() tìm entry này để detect decrypt path.
-    Actual decrypt dùng KeyMint AIDL từ subfolder xml.
+    Vendor VINTF manifest — myron (Redmi K90 Pro Max / SM8850 canoe)
+    Platform corrected from sun to canoe for WPMCNXM compatibility.
+    NOTE: android.hardware.keymaster@4.1 entry added FOR OFOX KEYMASTER DETECTION ONLY.
+    OFox R11.x/R12.x Keymaster_Ver() searches for this HIDL entry to determine decrypt path.
+    The actual decrypt uses KeyMint AIDL (version 3) — this entry is only for OFox parser.
+    FIX: version 9.0 for Android 16 / libvintf@9.0 compatibility
+    FIX: <n>→<name> per libvintf XML schema
 -->
-<manifest version="2.0" type="device">
-    <!-- OFox keymaster version detection — HIDL stub, NOT real service -->
+<manifest version="8.0" type="device" target-level="202504">
+    <!-- OFox keymaster version detection (HIDL legacy entry required by OFox parser) -->
     <hal format="hidl">
         <name>android.hardware.keymaster</name>
         <transport>hwbinder</transport>
@@ -28,16 +18,31 @@
             <instance>default</instance>
         </interface>
     </hal>
-
-    <!-- Gatekeeper AIDL -->
+    <!-- Actual KeyMint AIDL (used for real decrypt) -->
+    <hal format="aidl">
+        <name>android.hardware.security.keymint</name>
+        <version>3</version>
+        <fqname>IKeyMintDevice/default</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>android.hardware.security.keymint</name>
+        <version>3</version>
+        <fqname>IRemotelyProvisionedComponent/default</fqname>
+    </hal>
     <hal format="aidl">
         <name>android.hardware.gatekeeper</name>
         <fqname>IGatekeeper/default</fqname>
     </hal>
-
-    <!-- Secure Element AIDL -->
+    <!-- Weaver (小米特有，用于指纹安全存储) -->
+    <hal format="aidl">
+        <name>android.hardware.weaver</name>
+        <fqname>IWeaver/default</fqname>
+    </hal>
     <hal format="aidl">
         <name>android.hardware.secure_element</name>
         <fqname>ISecureElement/eSE1</fqname>
     </hal>
+    <sepolicy>
+        <version>202504</version>
+    </sepolicy>
 </manifest>

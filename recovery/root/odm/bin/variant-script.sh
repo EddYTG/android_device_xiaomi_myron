@@ -18,7 +18,7 @@ log() {
 case "$VARIANT" in
 "myron")
     MODEL="$BASE_NAME F8U"
-    resetprop ro.twrp.device_version "POCO_F8_ULTRA"
+    resetprop ro.twrp.device_version "REDMI_K90_PRO_MAX"
     resetprop ro.twrp.y_offset "111"
     resetprop ro.twrp.h_offset "-111"
     resetprop vendor.display.enable_spr "1"

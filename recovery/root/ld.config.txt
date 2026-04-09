@@ -1,30 +1,108 @@
-# Recovery linker namespace config — myron (SM8850 / sun)
-# FIXED: Thêm /odm/lib64 vào đầu search path (Thales JavaCard libs)
-# FIXED: LD_CONFIG_FILE path: /ld.config.txt (root của ramdisk)
+#
+# Recovery linker namespace config — myron (SM8850 / canoe)
+# Copyright (C) 2026 The OrangeFox Recovery Project
+# 
+# Original: Vietnam Dev Team (cs40l26 haptics, ld.config template)
+# Modified: Russian Dev Team (myron adaptation, GKI 6.12 support)
+# Chinese localization added based on above contributions
+#
+# ============================================================================
+# [EN] Purpose: Linker namespace isolation bypass for Recovery HAL services
+# [VI] Mục đích: Cấu hình namespace linker cho chế độ Recovery
+# [RU] Назначение: Конфигурация linker namespace для Recovery режима
+# [CN] 用途：Recovery 模式下动态链接器命名空间隔离绕过配置
+# ============================================================================
+#
+# [EN] Hardware: Redmi K90 Pro Max (myron), Snapdragon 8 Elite (canoe)
+# [VI] Phần cứng: Redmi K90 Pro Max, Snapdragon 8 Elite
+# [RU] Оборудование: Redmi K90 Pro Max, Snapdragon 8 Elite
+# [CN] 硬件平台：Redmi K90 Pro Max (myron), 骁龙 8 Elite (canoe)
+#
+# [EN] Features: FBE v2, KeyMint AIDL (QTI TEE + NXP StrongBox), GKI 6.12
+# [VI] Tính năng: FBE v2, KeyMint AIDL, GKI 6.12
+# [RU] Особенности: FBE v2, KeyMint AIDL, GKI 6.12
+# [CN] 加密特性：FBE v2, KeyMint AIDL (QTI TEE + NXP StrongBox), GKI 6.12
+#
 
-dir.recovery     = /system/bin
+# [EN] Recovery binary directories | [CN] Recovery 主程序目录
+# [VI] Thư mục binary Recovery | [RU] Каталоги Recovery
+dir.recovery = /system/bin
 dir.vendor_recovery = /vendor/bin
 dir.vendor_recovery = /vendor/bin/hw
 dir.odm_recovery = /odm/bin
 dir.odm_recovery = /odm/bin/hw
 
+# ============================================================================
+# [recovery] namespace
+# [EN] For core system components, allows cross-partition library access
+# [VI] Dành cho thành phần hệ thống core, cho phép truy cập cross-partition
+# [RU] Для основных системных компонентов, разрешает межразделный доступ
+# [CN] 用于系统核心组件，允许跨分区访问 vendor/odm 库（解决 FBE 解密依赖）
+# ============================================================================
 [recovery]
 namespace.default.isolated = false
-namespace.default.search.paths  = /odm/${LIB}
-namespace.default.search.paths += /system/${LIB}
+
+# Library search paths | Đường dẫn tìm kiếm thư viện | Пути поиска библиотек | 库搜索路径
+namespace.default.search.paths = /system/${LIB}
 namespace.default.search.paths += /vendor/${LIB}
 namespace.default.search.paths += /vendor/${LIB}/hw
+namespace.default.search.paths += /odm/${LIB}
 
+# ASan/HWAsan debug configs (disabled in Recovery, kept for compatibility)
+# Cấu hình debug ASan (tắt trong Recovery, giữ để tương thích)
+# Конфигурация отладки ASan (отключено в Recovery, для совместимости)
+# ASan/HWAsan 调试配置（Recovery 模式通常禁用，保留兼容）
+namespace.default.asan.search.paths = /data/asan/system/${LIB}
+namespace.default.asan.search.paths += /system/${LIB}
+namespace.default.hwasan.search.paths = /system/${LIB}/hwasan
+namespace.default.hwasan.search.paths += /system/${LIB}
+
+# ============================================================================
+# [vendor_recovery] namespace  
+# [EN] For vendor HALs (KeyMint, Gatekeeper, Weaver service)
+# [VI] Dành cho vendor HALs (KeyMint, Gatekeeper, Weaver)
+# [RU] Для vendor HALs (KeyMint, Gatekeeper, Weaver)
+# [CN] 用于 vendor 分区 HAL 服务（如 KeyMint、Gatekeeper、指纹 Weaver）
+# ============================================================================
 [vendor_recovery]
 namespace.default.isolated = false
-namespace.default.search.paths  = /odm/${LIB}
+
+# Allows vendor bins to access odm extensions and system libs
+# Cho phép vendor truy cập odm extensions và system libs
+# Разрешает vendor доступ к odm расширениям и system библиотекам
+# 允许 vendor 二进制文件访问 odm 扩展库和系统基础库
+namespace.default.search.paths = /vendor/${LIB}
+namespace.default.search.paths += /vendor/${LIB}/hw
+namespace.default.search.paths += /odm/${LIB}
+namespace.default.search.paths += /system/${LIB}
+
+# ============================================================================
+# [odm_recovery] namespace
+# [EN] For Xiaomi ODM customizations (charging HAL, displayfeature, etc.)
+# [VI] Dành cho tùy chỉnh ODM Xiaomi (charging HAL, displayfeature)
+# [RU] Для Xiaomi ODM кастомизаций (charging HAL, displayfeature)
+# [CN] 用于小米 ODM 定制组件（充电 HAL、显示特性、振动触觉等）
+# ============================================================================
+[odm_recovery]
+namespace.default.isolated = false
+
+# ODM libs prioritized, fallback to vendor/system
+# Ưu tiên ODM libs, fallback về vendor/system
+# Приоритет ODM libs, fallback к vendor/system
+# ODM 库优先搜索，回退到 vendor/system
+namespace.default.search.paths = /odm/${LIB}
 namespace.default.search.paths += /vendor/${LIB}
 namespace.default.search.paths += /vendor/${LIB}/hw
 namespace.default.search.paths += /system/${LIB}
 
-[odm_recovery]
-namespace.default.isolated = false
-namespace.default.search.paths  = /odm/${LIB}
-namespace.default.search.paths += /vendor/${LIB}
-namespace.default.search.paths += /vendor/${LIB}/hw
-namespace.default.search.paths += /system/${LIB}
+# ============================================================================
+# Acknowledgments / Lời cảm ơn / Благодарности / 致谢
+# ============================================================================
+# Thanks to Vietnam Dev Team for the base ld.config template (cs40l26 firmware)
+# Thanks to Russian Dev Team for myron device adaptation and GKI 6.12 support
+# Chinese comments added for localization purposes
+#
+# 感谢越南开发者团队提供基础模板和 CS40L26 触觉固件配置，
+# 感谢俄罗斯开发者团队完成 myron 设备适配和 GKI 6.12 支持，
+# 中文注释仅用于本地化说明，所有权归原始贡献者所有。
+# ============================================================================

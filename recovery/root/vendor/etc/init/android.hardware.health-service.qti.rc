@@ -1,20 +1,14 @@
 service vendor.health-default /vendor/bin/hw/android.hardware.health-service.qti
     class hal
-    user root
-    group root
+    user system
+    group system
     capabilities WAKE_ALARM BLOCK_SUSPEND
-    disabled
-    interface aidl android.hardware.health.IHealth/default
     file /dev/kmsg w
-    setenv LD_LIBRARY_PATH /vendor/lib64:/vendor/lib64/hw:/odm/lib64:/system/lib64:/sbin
-    seclabel u:r:recovery:s0
 
 service vendor.charger /vendor/bin/hw/android.hardware.health-service.qti --charger
     class charger
-    user root
-    group root wakelock input graphics
+    seclabel u:r:charger_vendor:s0
+    user system
+    group system wakelock input graphics
     capabilities SYS_BOOT WAKE_ALARM BLOCK_SUSPEND
-    disabled
     file /dev/kmsg w
-    setenv LD_LIBRARY_PATH /vendor/lib64:/vendor/lib64/hw:/odm/lib64:/system/lib64:/sbin
-    seclabel u:r:recovery:s0
