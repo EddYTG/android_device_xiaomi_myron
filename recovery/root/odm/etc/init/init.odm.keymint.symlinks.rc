@@ -1,0 +1,13 @@
+# init.odm.keymint.symlinks.rc — myron
+#
+# Lib aliases đã được tạo sẵn trong ramdisk (recovery/root/odm/lib64/):
+#   ese_weaver.so               ← copy của ese_weaver_thales.so
+#   libjc_keymint3.nxp.so      ← copy của libjc_keymint-thales.so
+#   libjc_keymint_transport_nxp.so ← copy của libjc_keymint_transport-thales.so
+#   lib_android_keymaster_keymint_utils_V3.so ← copy từ vendor/lib64/
+#
+# Runtime symlink đã không còn cần thiết.
+# File này giữ nguyên để tương thích ngược với script check.
+on post-fs
+    # No-op: lib aliases pre-baked vào ramdisk
+    setprop odm.keymint.symlinks.done 1

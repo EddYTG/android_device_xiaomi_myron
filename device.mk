@@ -2,7 +2,7 @@
 # Copyright (C) 2026 OrangeFox Recovery Project
 # Device: Xiaomi myron (POCO F8 Ultra / Redmi K90 Pro Max)
 # Branch: OrangeFox 14.1
-# SoC   : Snapdragon 8 Elite Gen 5 (SM8850 / canoe)
+# SoC   : Snapdragon 8 Elite Gen 5 (SM8850 / sun)
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -40,19 +40,3 @@ PRODUCT_PACKAGES += \
 PRODUCT_EXTRA_RECOVERY_KEYS += \
     $(DEVICE_PATH)/security/releasekey
 
-# ─── Required modules ─────────────────────────────────────────────────────────
-TWRP_REQUIRED_MODULES += \
-    prebuilt
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Haptics firmware (RTP effects) — prebuilt, NOT in recovery/root/
-# All other recovery root files are in recovery/root/ (SM8750 pattern)
-# Confirmed: ro.odm.mm.vibrator.device_type=agm, resonant_frequency=170 (getprop)
-# ─────────────────────────────────────────────────────────────────────────────
-PRODUCT_COPY_FILES += \
-    $(DEVICE_PATH)/prebuilt/lib/firmware/0_click_P_RTP.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/0_click_P_RTP.bin \
-    $(DEVICE_PATH)/prebuilt/lib/firmware/1_doubelClick_P_RTP.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/1_doubelClick_P_RTP.bin \
-    $(DEVICE_PATH)/prebuilt/lib/firmware/2_tick_P_RTP.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/2_tick_P_RTP.bin \
-    $(DEVICE_PATH)/prebuilt/lib/firmware/3_thud_P_RTP.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/3_thud_P_RTP.bin \
-    $(DEVICE_PATH)/prebuilt/lib/firmware/4_pop_P_RTP.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/4_pop_P_RTP.bin \
-    $(DEVICE_PATH)/prebuilt/lib/firmware/5_heavyClick_P_RTP.bin:$(TARGET_COPY_OUT_RECOVERY)/root/lib/firmware/5_heavyClick_P_RTP.bin

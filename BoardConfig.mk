@@ -1,7 +1,7 @@
 #
 # Copyright (C) 2026 The OrangeFox Recovery Project
-# Device : Redmi K90 Pro Max (myron)
-# SoC    : Snapdragon 8 Elite Gen 5 (SM8850 / canoe)
+# Device : Xiaomi POCO F8 Ultra / Redmi K90 Pro Max (myron)
+# SoC    : Snapdragon 8 Elite Gen 5 (SM8850 / sun)
 # Branch : OrangeFox 14.1
 #
 # Confirmed from:
@@ -40,16 +40,16 @@ ENABLE_SCHEDBOOST := true
 
 # ─────────────────────────────────────────────────────────
 # Platform
-# Confirmed: ro.board.platform=canoe, ro.product.board=canoe (getprop)
+# Confirmed: ro.board.platform=xiaomi_sm8850, ro.product.board=sun (getprop)
 # ─────────────────────────────────────────────────────────
-PRODUCT_PLATFORM      := canoe
+PRODUCT_PLATFORM      := sun
 TARGET_BOOTLOADER_BOARD_NAME := $(PRODUCT_PLATFORM)
 TARGET_NO_BOOTLOADER  := true
 TARGET_USES_UEFI      := true
 
-TARGET_BOARD_PLATFORM := canoe
+TARGET_BOARD_PLATFORM := sun
 TARGET_BOARD_PLATFORM_GPU := qcom-adreno840
-QCOM_BOARD_PLATFORMS  += canoe
+QCOM_BOARD_PLATFORMS  += sun
 
 # ─────────────────────────────────────────────────────────
 # Kernel — prebuilt GKI 6.12, boot header v4, vendor_boot style
@@ -64,15 +64,12 @@ BOARD_KERNEL_IMAGE_NAME   := Image
 BOARD_BOOT_HEADER_VERSION := 4
 BOARD_KERNEL_PAGESIZE     := 4096
 TARGET_KERNEL_CLANG_COMPILE := true
-# TARGET_PREBUILT_KERNEL    := $(DEVICE_PATH)/prebuilt/kernel
-TARGET_KERNEL_SOURCE := $(LOCAL_PATH)/kernel
-TARGET_KERNEL_CONFIG := myron_defconfig
+TARGET_PREBUILT_KERNEL    := $(DEVICE_PATH)/prebuilt/kernel
 BOARD_MKBOOTIMG_ARGS      += --header_version $(BOARD_BOOT_HEADER_VERSION)
 BOARD_MKBOOTIMG_ARGS      += --pagesize $(BOARD_KERNEL_PAGESIZE)
 BOARD_RAMDISK_USE_LZ4     := true
 
-# Kernel lives in boot (GKI 38MB Image+DTB), vendor_boot contains vendor ramdisk
-# Do NOT embed kernel in recovery.img (loaded from boot_b by bootloader)
+# Kernel lives in vendor_boot — do NOT embed in recovery.img
 BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true
 
 # Empty cmdline — all params via bootconfig (confirmed /proc/cmdline vs /proc/bootconfig)
@@ -106,9 +103,8 @@ AB_OTA_PARTITIONS += \
     vbmeta_system \
     vendor \
     vendor_boot \
-    vendor_dlkm \
-    mi_ext
-	
+    vendor_dlkm
+
 BOARD_USES_RECOVERY_AS_BOOT             := false
 BOARD_RECOVERY_NEEDS_BOOTLOADER_CONTROL := true
 
@@ -153,6 +149,7 @@ TARGET_USERIMAGES_USE_F2FS         := true
 #
 # OFox R12.1 accepts max 7 partition names in PARTITION_LIST.
 # system_dlkm MUST be included (is-logical=yes, in AB_OTA).
+# mi_ext is Xiaomi-only, NOT in AB_OTA → excluded from list.
 # neo_inject has no _b slot → not managed by OFox.
 # ─────────────────────────────────────────────────────────
 BOARD_SUPER_PARTITION_SIZE := 14495514624
@@ -165,9 +162,8 @@ BOARD_XIAOMI_DYNAMIC_PARTITIONS_PARTITION_LIST := \
     vendor \
     vendor_dlkm \
     odm \
-    system_dlkm \
-    mi_ext
-	
+    system_dlkm
+
 # Filesystem types
 TARGET_COPY_OUT_VENDOR     := vendor
 BOARD_USES_VENDOR_DLKMIMAGE := true
@@ -241,11 +237,10 @@ TW_BRIGHTNESS_PATH       := "/sys/class/backlight/panel0-backlight/brightness"
 TW_DEFAULT_BRIGHTNESS    := 1200
 TW_MAX_BRIGHTNESS        := 4094
 TW_NO_SCREEN_BLANK  := true
-TW_SCREEN_BLANK_ON_BOOT  := false
-TARGET_USES_DRM_PP := true
-BOARD_DISABLE_FB_PANNING := true
-TW_Y_OFFSET              := 111
-TW_H_OFFSET              := -111
+TW_SCREEN_BLANK_ON_BOOT  := true
+TW_Y_OFFSET              := 141
+TW_H_OFFSET              := -141
+TW_STATUS_ICONS_ALIGN    := center
 
 
 
@@ -276,6 +271,9 @@ TW_ENABLE_ALL_PARTITION_TOOLS := true
 TW_USE_DMCTL            := true
 # TW_USE_QCOM_HAPTICS_VIBRATOR := true  ← disabled: vibratorfeature service not running in recovery → blocks UI 5s per touch
 TW_USE_BATTERY_SYSFS_STATS    := true
+# myron: mca_business_battery driver exposes battery ở path platform-specific
+# Confirmed từ logcat AVC audit: soc:mca_business_battery/power_supply/battery/capacity
+# Path ngắn /sys/class/power_supply/battery là symlink kernel tạo tự động → OK
 TW_POWER_SUPPLY_BATTERY_PATH  := "/sys/class/power_supply/battery"
 TW_DEFAULT_TIMEZONE           := "Asia/Ho_Chi_Minh"
 
@@ -289,12 +287,12 @@ RECOVERY_BINARY_SOURCE_FILES += $(TARGET_OUT_EXECUTABLES)/debuggerd
 RECOVERY_BINARY_SOURCE_FILES += $(TARGET_OUT_EXECUTABLES)/strace
 
 # ─────────────────────────────────────────────────────────
-# Vendor modules (kernel modules for touch / WiFi / TEE / ADSP)
+# Vendor modules (kernel modules for touch / audio / ADSP)
+# Touch: focaltech_touch_3683.ko (FTS IC — confirmed from odm ramdisk)
+# Audio: ADSP modules required for keymint/weaver init chain
 # ─────────────────────────────────────────────────────────
-TW_LOAD_VENDOR_MODULES := "panel_event_notifier.ko gh_irq_lend.ko msm_drm.ko xiaomi_touch.ko focaltech_touch_3683.ko qsee_ipc_irq_bridge.ko hdcp_qseecom_dlkm.ko smcinvoke_dlkm.ko cnss_prealloc.ko cnss_nl.ko wlan_firmware_service.ko cfg80211.ko qca_cld3_peach_v2.ko adsp_loader_dlkm.ko q6_dlkm.ko q6_pdr_dlkm.ko q6_notifier_dlkm.ko snd_event_dlkm.ko gpr_dlkm.ko spf_core_dlkm.ko rproc_qcom_common.ko qcom_q6v5.ko qcom_q6v5_pas.ko qcom_sysmon.ko"
-# GKI 时代 Recovery 模块加载行为控制
+TW_LOAD_VENDOR_MODULES := "focaltech_touch_3683.ko xiaomi_touch.ko adsp_loader_dlkm.ko q6_dlkm.ko q6_pdr_dlkm.ko q6_notifier_dlkm.ko snd_event_dlkm.ko gpr_dlkm.ko spf_core_dlkm.ko rproc_qcom_common.ko qcom_q6v5.ko qcom_q6v5_pas.ko qcom_sysmon.ko"
 TW_LOAD_VENDOR_MODULES_EXCLUDE_GKI := true
-TW_LOAD_VENDOR_MODULES_EXCLUDE_DEFAULT_MODULES := true
 TW_LOAD_PREBUILT_MODULES_AT_FIRST  := true
 
 # ─────────────────────────────────────────────────────────
@@ -315,7 +313,9 @@ TW_SUPPORT_INPUT_AIDL_HAPTICS_FW_COMPOSER          := false
 TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF              := true
 TW_SUPPORT_INPUT_AIDL_HAPTICS_INSTALL_LEGACY_CHECK := false
 TW_NO_LEGACY_PROPS          := true
-TW_BATTERY_SYSFS_WAIT_SECONDS := 5
+# Tăng wait time: mca_business_battery driver cần ~1.7s để probe (dmesg)
+# 8 giây đủ margin kể cả khi ADSP boot chậm
+TW_BATTERY_SYSFS_WAIT_SECONDS := 8
 TW_EXCLUDE_APEX := true
 
 # ─────────────────────────────────────────────────────────
@@ -333,11 +333,9 @@ TW_HAS_EDL_MODE       := false
 TW_USE_SERIALNO_PROPERTY_FOR_DEVICE_ID := true
 TW_CUSTOM_CPU_TEMP_PATH := "/sys/class/thermal/thermal_zone45/temp"
 TW_BACKUP_EXCLUSIONS  := /data/fonts
-TW_DEVICE_VERSION     := Redmi_K90_ProMax
+TW_DEVICE_VERSION     := POCO_F8_Ultra
 
 # SDK versions
 # Confirmed: ro.product.first_api_level=35, ro.board.first_api_level=35 (getprop)
 # fox_14.1 builds against SDK 34 AOSP base — BOARD_SYSTEMSDK_VERSIONS=34
 BOARD_SYSTEMSDK_VERSIONS := 34
-# FINGERPRINT
-BUILD_FINGERPRINT := "Redmi/myron/myron:16/BP2A.250605.031.A3/OS3.0.305.4.WPMCNXM:user/release-keys"

@@ -1,8 +1,8 @@
 # system.prop — Xiaomi myron (POCO F8 Ultra / Redmi K90 Pro Max)
 # All values confirmed from adb shell getprop + /proc/bootconfig (stock ROM)
 #
-# ro.board.platform=canoe
-# ro.product.board=canoe
+# ro.board.platform=xiaomi_sm8850 (getprop)
+# ro.product.board=sun (getprop)
 # ro.boot.dynamic_partitions=true (getprop)
 # ro.virtual_ab.enabled=true (getprop)
 # ro.virtual_ab.compression.enabled=true (getprop)
