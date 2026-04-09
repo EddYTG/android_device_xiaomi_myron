@@ -1,0 +1,16 @@
+# init.odm.keymint.symlinks.rc — myron
+#
+# Lib aliases đã được tạo sẵn trong ramdisk (recovery/root/odm/lib64/):
+#   ese_weaver.so               ← copy của ese_weaver_thales.so
+#   libjc_keymint3.nxp.so      ← copy của libjc_keymint-thales.so
+#   libjc_keymint_transport_nxp.so ← copy của libjc_keymint_transport-thales.so
+#   lib_android_keymaster_keymint_utils_V3.so ← copy từ vendor/lib64/
+#
+# FIX: libbinder_ndk.so → libbinder_ndk-sdk35.so
+#   weaver-service và keymint-strongbox dùng AIBinder_Class_setTransactionCodeToFunctionNameMap
+#   Symbol này chỉ có trong SDK 35 version của libbinder_ndk.
+#   Recovery base (SDK 34) không có → linker fall back về sdk35 version qua symlink.
+on post-fs
+    # Symlink libbinder_ndk.so → sdk35 version (có AIBinder_Class_setTransactionCodeToFunctionNameMap)
+    symlink /vendor/lib64/libbinder_ndk-sdk35.so /vendor/lib64/libbinder_ndk.so
+    setprop odm.keymint.symlinks.done 1

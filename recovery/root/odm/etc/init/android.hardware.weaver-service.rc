@@ -1,0 +1,8 @@
+service odm.weaver-service /odm/bin/hw/android.hardware.weaver-service
+    class early_hal
+    user root
+    group root drmrpc
+    disabled
+    interface aidl android.hardware.weaver.IWeaver/default
+    setenv LD_LIBRARY_PATH /odm/lib64:/vendor/lib64:/vendor/lib64/hw:/system/lib64:/sbin
+    seclabel u:r:recovery:s0
