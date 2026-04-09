@@ -18,8 +18,8 @@
 #
 # 	Please maintain this if you use this script or any part of it
 #
-# Device: Xiaomi myron (POCO F8 Ultra / Redmi K90 Pro Max)
-# SoC   : Snapdragon 8 Elite Gen 5 (SM8850 / sun)
+# Device: Xiaomi myron (Redmi K90 Pro Max)
+# SoC   : Snapdragon 8 Elite Gen 5 (SM8850 / canoe)
 # Branch: OrangeFox 14.1
 #
 # All values confirmed from:
@@ -99,13 +99,32 @@ export FOX_ENABLE_KERNELSU_SUPPORT=1
 export FOX_ENABLE_KERNELSU_NEXT_SUPPORT=1
 export FOX_ENABLE_SUKISU_SUPPORT=1
 
+# ─── Display ─────────────────────────────────────────────────────────────────
+# Confirmed: 1200x2608 (variant-script.sh), y_offset=111 (bootconfig/BoardConfig)
+export OF_SCREEN_H=2608
+export OF_STATUS_H=111
+export OF_STATUS_INDENT_LEFT=48
+export OF_STATUS_INDENT_RIGHT=48
+export OF_HIDE_NOTCH=0
+export OF_ALLOW_DISABLE_NAVBAR=0
+export OF_OPTIONS_LIST_NUM=6
+
+# ─── OrangeFox version ───────────────────────────────────────────────────────
+# Phải set để build ra R12.1 thay vì R11.3 (default của source 14.1)
+
 # ─── Maintainer / variant ────────────────────────────────────────────────────
 export FOX_VARIANT="Xiaomi_myron_POCO_F8_Ultra"
 export FOX_MAINTAINER_PATCH_VERSION=$(date +%y%m%d)
+export OF_MAINTAINER="Antuna"
 
 # ─── Magisk ───────────────────────────────────────────────────────────────────
 # Path phải khớp với file workflow download vào /tmp/misc/Magisk.zip
 export OF_MAGISK="/tmp/misc/Magisk.zip"
 export FOX_USE_SPECIFIC_MAGISK_ZIP="/tmp/misc/Magisk.zip"
 
-
+# ─── Splash: set black background ────────────────────────────────────────────
+F=$(find "device" -maxdepth 2 -name "myron" 2>/dev/null)
+if [ -n "$F" ] && [ -f "$F/recovery/root/twres/splash.xml" ]; then
+    sed -i 's/value="#D34E38"/value="#000000"/g' "$F/recovery/root/twres/splash.xml"
+    sed -i 's/value="#FF8038"/value="#000000"/g' "$F/recovery/root/twres/splash.xml"
+fi
