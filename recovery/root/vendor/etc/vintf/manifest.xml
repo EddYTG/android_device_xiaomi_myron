@@ -1,43 +1,9 @@
-<!--
-    Vendor VINTF manifest — myron (POCO F8 Ultra / SM8850 sun)
-
-    CRITICAL FIX (confirmed from logcat):
-    ─────────────────────────────────────
-    Lỗi gốc: IKeyMintDevice/default @3 được khai báo 2 lần:
-      1) trong file này  (manifest.xml)
-      2) trong manifest/android.hardware.security.keymint-service-qti.xml
-    → hwservicemanager trả về -2147483648 khi parse VINTF
-    → TẤT CẢ service registration fail theo cascade (health, boot-hal, weaver...)
-    → Pin hiển thị 100%, boot-hal fail STATUS=-3, weaver không start
-
-    Solution: Xóa keymint AIDL khỏi manifest.xml chính.
-    Subfolder manifest/ sẽ được auto-merge bởi libvintf — không conflict.
-
-    NOTE: android.hardware.keymaster@4.1 HIDL giữ lại vì:
-    OFox R11.x/R12.x Keymaster_Ver() tìm entry này để detect decrypt path.
-    Actual decrypt dùng KeyMint AIDL từ subfolder xml.
--->
+<!-- Vendor VINTF manifest - myron (POCO F8 Ultra / SM8850 sun) -->
+<!-- Decryption removed. Only essential HALs retained. -->
 <manifest version="2.0" type="device">
-    <!-- OFox keymaster version detection — HIDL stub, NOT real service -->
-    <hal format="hidl">
-        <name>android.hardware.keymaster</name>
-        <transport>hwbinder</transport>
-        <version>4.1</version>
-        <interface>
-            <name>IKeymasterDevice</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-
     <!-- Gatekeeper AIDL -->
     <hal format="aidl">
-        <name>android.hardware.gatekeeper</name>
+        <n>android.hardware.gatekeeper</n>
         <fqname>IGatekeeper/default</fqname>
-    </hal>
-
-    <!-- Secure Element AIDL -->
-    <hal format="aidl">
-        <name>android.hardware.secure_element</name>
-        <fqname>ISecureElement/eSE1</fqname>
     </hal>
 </manifest>

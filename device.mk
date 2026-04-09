@@ -39,4 +39,3 @@ PRODUCT_PACKAGES += \
 # ─── Release key ──────────────────────────────────────────────────────────────
 PRODUCT_EXTRA_RECOVERY_KEYS += \
     $(DEVICE_PATH)/security/releasekey
-

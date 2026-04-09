@@ -182,36 +182,6 @@ $(foreach p, $(BOARD_PARTITION_LIST), $(eval BOARD_$(p)IMAGE_FILE_SYSTEM_TYPE :=
 $(foreach p, $(BOARD_PARTITION_LIST), $(eval TARGET_COPY_OUT_$(p) := $(call to-lower,$(p))))
 
 # ─────────────────────────────────────────────────────────
-# Crypto / FBE
-# Confirmed from getprop:
-#   fbe.contents=aes-256-xts
-#   fbe.filenames=aes-256-cts:v2+inlinecrypt_optimized+wrappedkey_v0
-#   metadata.contents=aes-256-xts
-#   metadata.filenames=wrappedkey_v0
-#   prepdecrypt.setpatch=true
-# Confirmed from odm vintf: keymint v3 (strongbox NXP JavaCard)
-#   weaver-service runs from /odm/bin/hw/android.hardware.weaver-service
-# ─────────────────────────────────────────────────────────
-BOARD_USES_METADATA_PARTITION    := true
-BOARD_USES_QCOM_FBE_DECRYPTION   := true
-TW_INCLUDE_CRYPTO                := true
-TW_INCLUDE_CRYPTO_FBE            := true
-TW_INCLUDE_FBE_METADATA_DECRYPT  := true
-
-# KeyMint AIDL — v4 QTI TEE + v3 ODM strongbox (NXP/Thales JavaCard)
-TW_CRYPTO_USE_VENDOR_KEYMINT      := true
-TW_KEYMINT_CLIENT_CONNECT_TIMEOUT := 4000
-TW_USE_FSCRYPT_POLICY            := 2
-
-# Security patch bypass (anti-rollback workaround)
-# Confirmed: version-os=99.87.36 (fastboot), ro.build.version.release=99.87.36 (getprop)
-PLATFORM_VERSION             := 99.87.36
-PLATFORM_VERSION_LAST_STABLE := $(PLATFORM_VERSION)
-PLATFORM_SECURITY_PATCH      := 2099-12-31
-VENDOR_SECURITY_PATCH        := $(PLATFORM_SECURITY_PATCH)
-BOOT_SECURITY_PATCH          := $(PLATFORM_SECURITY_PATCH)
-
-# ─────────────────────────────────────────────────────────
 # Recovery
 # ─────────────────────────────────────────────────────────
 TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
@@ -238,9 +208,8 @@ TW_DEFAULT_BRIGHTNESS    := 1200
 TW_MAX_BRIGHTNESS        := 4094
 TW_NO_SCREEN_BLANK  := true
 TW_SCREEN_BLANK_ON_BOOT  := true
-TW_Y_OFFSET              := 141
-TW_H_OFFSET              := -141
-TW_STATUS_ICONS_ALIGN    := center
+TW_Y_OFFSET              := 111
+TW_H_OFFSET              := -111
 
 
 
@@ -339,3 +308,5 @@ TW_DEVICE_VERSION     := POCO_F8_Ultra
 # Confirmed: ro.product.first_api_level=35, ro.board.first_api_level=35 (getprop)
 # fox_14.1 builds against SDK 34 AOSP base — BOARD_SYSTEMSDK_VERSIONS=34
 BOARD_SYSTEMSDK_VERSIONS := 34
+# FINGERPRINT
+BUILD_FINGERPRINT := "Redmi/myron/myron:16/BQ2A.250705.001-BP2A.250605.031.A3/OS3.0.303.0.WPMCNXM:user/release-keys"
