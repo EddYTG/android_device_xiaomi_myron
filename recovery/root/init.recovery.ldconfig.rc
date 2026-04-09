@@ -1,8 +1,22 @@
-# LD_CONFIG_FILE: Trỏ tới ld.config.txt ở root của ramdisk
-# File này được đặt tại recovery/root/ld.config.txt → runtime: /ld.config.txt
-# PHẢI export ở early-fs (không phải fs) để linker có LD_CONFIG_FILE
-# trước khi bất kỳ service nào exec — bao gồm qseecomd (on init).
-# Nếu export muộn → linker dùng default search path → miss /odm/lib64 /vendor/lib64
-# → crash với "library not found" hoặc "cannot locate symbol".
+# Recovery Linker Configuration for myron (SM8850 / canoe)
+# 国行版 Redmi K90 Pro Max 专用 - 支持 ODM 分区 NXP StrongBox
+
+on init
+    # ★★★ 关键：必须包含 ODM 分区路径，NXP StrongBox 库位于 /odm/lib64/
+    export LD_LIBRARY_PATH /odm/lib64:/vendor/lib64:/system/lib64:/vendor/lib64/hw:/odm/lib64/hw:/system/lib64/hw
+    
+    # 保持原有配置
+    export LD_CONFIG_FILE /system/etc/ld.config.txt
+
 on early-fs
-    export LD_CONFIG_FILE /ld.config.txt
+    # 确保 ODM 分区挂载后库路径立即生效
+    export LD_LIBRARY_PATH /odm/lib64:/vendor/lib64:/system/lib64:/vendor/lib64/hw:/odm/lib64/hw:/system/lib64/hw
+
+on fs
+    # 二次确认（某些 Recovery 环境在 fs 阶段重置环境变量）
+    export LD_LIBRARY_PATH /odm/lib64:/vendor/lib64:/system/lib64:/vendor/lib64/hw:/odm/lib64/hw:/system/lib64/hw
+    export LD_CONFIG_FILE /system/etc/ld.config.txt
+    
+    # 创建必要的符号链接（确保链接器能找到库）
+    symlink /odm/lib64 /vendor/lib64/odm
+    symlink /system/lib64 /vendor/lib64/system

@@ -18,8 +18,8 @@
 #
 # 	Please maintain this if you use this script or any part of it
 #
-# Device: Xiaomi myron (POCO F8 Ultra / Redmi K90 Pro Max)
-# SoC   : Snapdragon 8 Elite Gen 5 (SM8850 / sun)
+# Device: Xiaomi myron (Redmi K90 Pro Max)
+# SoC   : Snapdragon 8 Elite Gen 5 (SM8850 / canoe)
 # Branch: OrangeFox 14.1
 #
 # All values confirmed from:
