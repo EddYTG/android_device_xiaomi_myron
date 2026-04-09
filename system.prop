@@ -1,14 +1,16 @@
 # system.prop — Xiaomi myron (POCO F8 Ultra / Redmi K90 Pro Max)
 # All values confirmed from adb shell getprop + /proc/bootconfig (stock ROM)
 #
-# ro.board.platform=canoe
-# ro.product.board=canoe
+# ro.board.platform=canoe  (runtime hardware codename — NOT "xiaomi_sm8850")
+# ro.soc.model=SM8850, ro.soc.manufacturer=QTI
+# ro.product.board=sun     (AOSP build target, TARGET_BOARD_PLATFORM=sun)
 # ro.boot.dynamic_partitions=true (getprop)
 # ro.virtual_ab.enabled=true (getprop)
 # ro.virtual_ab.compression.enabled=true (getprop)
 # persist.sys.fuse.passthrough.enable=true (getprop)
 # androidboot.usbcontroller=a600000.dwc3 (/proc/bootconfig)
 # vendor.gatekeeper.disable_spu — needed for QCOM gatekeeper without SPU
+# kernel: 6.12.23-android16-5 (uname -r)
 #
 
 ro.adb.secure=0
