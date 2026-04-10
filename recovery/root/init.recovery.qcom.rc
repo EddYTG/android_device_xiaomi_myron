@@ -5,6 +5,9 @@ import /init.recovery.wifi.rc
 
 on init
     start vendor.boot-qti
+    # Disable MTE tagged pointers — kernel 6.12 SM8850 MTE causes
+    # libpixelflinger JIT SIGSEGV (SEGV_ACCERR) on tag mismatch
+    write /proc/sys/vm/mte_mode 0
 
 on early-fs
     write /proc/sys/walt/sched_lib_name "recovery,magiskboot,Updater,updater,update_engine_sideload"

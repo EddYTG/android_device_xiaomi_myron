@@ -194,7 +194,7 @@ BOOT_SECURITY_PATCH          := $(PLATFORM_SECURITY_PATCH)
 # ─────────────────────────────────────────────────────────
 # Recovery
 # ─────────────────────────────────────────────────────────
-TARGET_RECOVERY_PIXEL_FORMAT := RGBA_8888
+TARGET_RECOVERY_PIXEL_FORMAT := BGRX_8888
 TARGET_RECOVERY_QCOM_RTC_FIX := true
 TARGET_RECOVERY_FSTAB        := $(DEVICE_PATH)/recovery.fstab
 TW_INCLUDE_FASTBOOTD         := true
