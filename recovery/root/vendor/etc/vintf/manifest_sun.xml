@@ -1,9 +1,29 @@
-<!-- Vendor VINTF manifest sun - myron (POCO F8 Ultra) -->
-<!-- Decryption removed. Only essential HALs retained. -->
+<!--
+    Vendor VINTF manifest sun — myron (POCO F8 Ultra / SM8850 sun)
+    Mirror của manifest.xml cho sun platform compatibility.
+
+    CRITICAL FIX: Xóa keymint AIDL duplicate — xem manifest.xml để biết lý do.
+    Subfolder manifest/*.xml sẽ được merge bởi libvintf tự động.
+-->
 <manifest version="2.0" type="device">
-    <!-- Gatekeeper AIDL -->
+    <!-- OFox keymaster version detection — HIDL stub -->
+    <hal format="hidl">
+        <name>android.hardware.keymaster</name>
+        <transport>hwbinder</transport>
+        <version>4.1</version>
+        <interface>
+            <name>IKeymasterDevice</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+
     <hal format="aidl">
-        <n>android.hardware.gatekeeper</n>
+        <name>android.hardware.gatekeeper</name>
         <fqname>IGatekeeper/default</fqname>
+    </hal>
+
+    <hal format="aidl">
+        <name>android.hardware.secure_element</name>
+        <fqname>ISecureElement/eSE1</fqname>
     </hal>
 </manifest>

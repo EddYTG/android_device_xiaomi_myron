@@ -29,5 +29,4 @@ BUILD_FINGERPRINT := Redmi/myron/myron:16/BQ2A.250705.001-BP2A.250605.031.A3/OS3
 # ─── OrangeFox display (mk-side vars) ─────────────────────────────────────────
 # Confirmed: 1200x2608, notch offset 111 (variant-script.sh + bootconfig)
 TW_STATUS_ICONS_ALIGN := center
-TW_Y_OFFSET           := 111
-TW_H_OFFSET           := -111
+# TW_Y_OFFSET / TW_H_OFFSET / TW_SCREEN_HEIGHT defined in BoardConfig.mk

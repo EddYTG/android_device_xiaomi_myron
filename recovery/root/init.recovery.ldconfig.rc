@@ -1,6 +1,8 @@
 # LD_CONFIG_FILE: Trỏ tới ld.config.txt ở root của ramdisk
 # File này được đặt tại recovery/root/ld.config.txt → runtime: /ld.config.txt
-# Mỗi service RC đã có setenv LD_LIBRARY_PATH riêng → linker config này
-# là safety net cho các process không có LD_LIBRARY_PATH set.
-on fs
+# PHẢI export ở early-fs (không phải fs) để linker có LD_CONFIG_FILE
+# trước khi bất kỳ service nào exec — bao gồm qseecomd (on init).
+# Nếu export muộn → linker dùng default search path → miss /odm/lib64 /vendor/lib64
+# → crash với "library not found" hoặc "cannot locate symbol".
+on early-fs
     export LD_CONFIG_FILE /ld.config.txt
