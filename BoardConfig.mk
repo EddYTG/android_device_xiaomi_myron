@@ -75,6 +75,10 @@ BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true
 # Empty cmdline — all params via bootconfig (confirmed /proc/cmdline vs /proc/bootconfig)
 BOARD_KERNEL_CMDLINE :=
 
+# Disable MTE ở kernel level — kernel 6.12 SM8850 bật MTE mặc định
+# libpixelflinger JIT crash SEGV_ACCERR (tag 0xb4 vs 0x00) confirmed từ log
+BOARD_BOOTCONFIG += androidboot.memtag.bootctl=off
+
 # ─────────────────────────────────────────────────────────
 # A/B — dedicated recovery partition
 #
