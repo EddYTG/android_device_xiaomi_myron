@@ -16,8 +16,7 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/emulated_storage.mk)
 $(call inherit-product, vendor/twrp/config/common.mk)
 
 # ─── API level ────────────────────────────────────────────────────────────────
-# ro.board.first_api_level=202504 (format YYYYMM, April 2025 — NOT an integer API level)
-# ro.bootimage.build.version.sdk=36 → Android 16
+# Confirmed: ro.product.first_api_level=35, ro.board.first_api_level=35 (getprop)
 BOARD_SHIPPING_API_LEVEL   := 34
 PRODUCT_SHIPPING_API_LEVEL := 34
 
@@ -27,9 +26,6 @@ PRODUCT_VIRTUAL_AB_OTA         := true
 
 # ─── Fuse passthrough ─────────────────────────────────────────────────────────
 PRODUCT_PROPERTY_OVERRIDES += persist.sys.fuse.passthrough.enable=true
-
-# ─── OrangeFox-specific settings ─────────────────────────────────────────────
-$(call inherit-product, $(LOCAL_PATH)/fox_myron.mk)
 
 # ─── Soong namespaces ─────────────────────────────────────────────────────────
 PRODUCT_SOONG_NAMESPACES += $(DEVICE_PATH)
@@ -43,12 +39,4 @@ PRODUCT_PACKAGES += \
 # ─── Release key ──────────────────────────────────────────────────────────────
 PRODUCT_EXTRA_RECOVERY_KEYS += \
     $(DEVICE_PATH)/security/releasekey
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Haptics: myron dùng qcom-hv-haptics (PMIC-based) — confirmed từ /proc/modules:
-#   qcom_hv_haptics 118784 1 - Live
-# cs40l26 KHÔNG có trong /vendor_dlkm/lib/modules/ → không phải kernel module
-# vibratorfeature binary dùng PAL → qcom-hv-haptics path, KHÔNG đọc /lib/firmware/
-# → KHÔNG cần prebuilt firmware files trong recovery ramdisk
-# ─────────────────────────────────────────────────────────────────────────────
 

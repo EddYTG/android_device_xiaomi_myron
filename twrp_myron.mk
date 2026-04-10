@@ -19,14 +19,7 @@ PRODUCT_BRAND        := Xiaomi
 PRODUCT_MODEL        := POCO F8 Ultra
 PRODUCT_MANUFACTURER := Xiaomi
 
-# Fingerprint — confirmed from stock ROM getprop:
-#   ro.bootimage.build.fingerprint=Redmi/myron/myron:16/BQ2A.250705.001-BP2A.250605.031.A3/OS3.0.303.0.WPMCNXM:user/release-keys
 PRODUCT_BUILD_PROP_OVERRIDES += \
     PRIVATE_BUILD_DESC="myron-user 16 BQ2A.250705.001-BP2A.250605.031.A3 OS3.0.303.0.WPMCNXM release-keys"
 
 BUILD_FINGERPRINT := Redmi/myron/myron:16/BQ2A.250705.001-BP2A.250605.031.A3/OS3.0.303.0.WPMCNXM:user/release-keys
-
-# ─── OrangeFox display (mk-side vars) ─────────────────────────────────────────
-# Confirmed: 1200x2608, notch offset 111 (variant-script.sh + bootconfig)
-TW_STATUS_ICONS_ALIGN := center
-# TW_Y_OFFSET / TW_H_OFFSET / TW_SCREEN_HEIGHT defined in BoardConfig.mk

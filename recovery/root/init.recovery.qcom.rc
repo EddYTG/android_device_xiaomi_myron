@@ -5,7 +5,6 @@ import /init.recovery.wifi.rc
 
 on init
     start vendor.boot-qti
-    setprop prepdecrypt.setpatch true
 
 on early-fs
     write /proc/sys/walt/sched_lib_name "recovery,magiskboot,Updater,updater,update_engine_sideload"
@@ -36,7 +35,7 @@ on property:twrp.modules.loaded=true
     mkdir /firmware
     mount vfat /dev/block/bootdevice/by-name/modem${ro.boot.slot_suffix} /firmware ro
 
-    # Boot ADSP — cần cho q6/audio pipeline (haptics/vibrator)
+    # Boot ADSP — cần cho q6/audio pipeline của keymint-strongbox
     wait /sys/kernel/boot_adsp/ssr
     write /sys/kernel/boot_adsp/ssr 1
 
@@ -49,12 +48,8 @@ on property:twrp.modules.loaded=true
     # dùng bởi vendor.keymint-qti, gatekeeper, secure_element
     symlink /firmware /vendor/firmware_mnt
 
-# Crypto DISABLED — prepdecrypt không start
-# on property:ro.crypto.state=encrypted && property:ro.boot.dynamic_partitions=true
-#     start odm.prepdecrypt
-
 on property:twrp.variant.files_copied=1
-    # CRITICAL STARTUP ORDER — Thales JavaCard decrypt chain:
+    # STARTUP ORDER — KeyMint / Weaver / SE HAL chain:
     #
     # 1. se_omapi TRƯỚC TIÊN: cung cấp APDU channel tới eSE
     #    se_omapi cần vendor.secure_element (ISecureElement/eSE1)
@@ -65,19 +60,15 @@ on property:twrp.variant.files_copied=1
     #
     # vibrator và touch_report không phụ thuộc vào chain này
 
-    # Crypto DISABLED — se_omapi/weaver/keymint-strongbox không start
-    # start odm.se_omapi
-    # start odm.weaver-service
-    # start odm.keymint-strongbox
+    start odm.se_omapi
+    start odm.weaver-service
+    start odm.keymint-strongbox
 
     # Vibrator: start độc lập
     start odm.vibratorfeature-service
 
     # Touch report: start độc lập
     start odm.touch_report
-
-on property:crypto.ready=1
-    start odm.umountvendor
 
 on property:hwservicemanager.ready=true
     setprop sys.boot_completed 1

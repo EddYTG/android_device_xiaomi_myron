@@ -6,10 +6,9 @@
 #
 # Confirmed from:
 #   fastboot getvar all  (partition sizes, slots, logical flags)
-#   adb shell getprop    (platform=canoe, soc=SM8850, first_api_level=202504, fbe params)
+#   adb shell getprop    (platform, board, first_api_level=35, fbe params)
 #   adb shell /proc/cmdline + /proc/bootconfig
 #   adb shell /odm vintf manifests (keymint v3, weaver, vibrator fqname)
-#   kernel: 6.12.23-android16-5 (uname -r)
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -41,13 +40,7 @@ ENABLE_SCHEDBOOST := true
 
 # ─────────────────────────────────────────────────────────
 # Platform
-# Confirmed from getprop:
-#   ro.board.platform=canoe  (runtime hardware codename — NOT "xiaomi_sm8850")
-#   ro.soc.model=SM8850, ro.soc.manufacturer=QTI
-#   ro.product.board=sun     (AOSP/build reference name)
-# TARGET_BOARD_PLATFORM stays "sun" — this is what QCOM/AOSP build system expects.
-# "canoe" = kernel/hardware codename; "sun" = SoC family build target.
-# debugcc-alor + debugcc-canoe modules in /proc/modules confirm canoe platform.
+# Confirmed: ro.board.platform=xiaomi_sm8850, ro.product.board=sun (getprop)
 # ─────────────────────────────────────────────────────────
 PRODUCT_PLATFORM      := sun
 TARGET_BOOTLOADER_BOARD_NAME := $(PRODUCT_PLATFORM)
@@ -92,17 +85,15 @@ BOARD_KERNEL_CMDLINE :=
 #   BOARD_USES_RECOVERY_AS_BOOT = false
 #
 # AB_OTA_PARTITIONS confirmed from:
-#   adb shell ls /dev/block/mapper/ → mi_ext_a tồn tại → mi_ext CÓ slot A/B
+#   ro.product.ab_ota_partitions (getprop stock ROM):
 #   boot,dtbo,init_boot,odm,product,system,system_dlkm,
-#   system_ext,vbmeta,vbmeta_system,vendor,vendor_boot,vendor_dlkm,mi_ext
-#   neo_inject_a cũng có _a slot nhưng là Xiaomi-internal, không managed bởi OFox
+#   system_ext,vbmeta,vbmeta_system,vendor,vendor_boot,vendor_dlkm
 # ─────────────────────────────────────────────────────────
 AB_OTA_UPDATER   := true
 AB_OTA_PARTITIONS += \
     boot \
     dtbo \
     init_boot \
-    mi_ext \
     odm \
     product \
     system \
@@ -156,9 +147,10 @@ TARGET_USERIMAGES_USE_F2FS         := true
 #   system, system_ext, product, vendor, vendor_dlkm, odm,
 #   system_dlkm, mi_ext, neo_inject
 #
-# Confirmed from adb shell ls /dev/block/mapper/:
-#   mi_ext_a → mi_ext IS logical + has A/B slot → included in list
-#   neo_inject_a → Xiaomi-internal partition, NOT managed by OFox → excluded
+# OFox R12.1 accepts max 7 partition names in PARTITION_LIST.
+# system_dlkm MUST be included (is-logical=yes, in AB_OTA).
+# mi_ext is Xiaomi-only, NOT in AB_OTA → excluded from list.
+# neo_inject has no _b slot → not managed by OFox.
 # ─────────────────────────────────────────────────────────
 BOARD_SUPER_PARTITION_SIZE := 14495514624
 BOARD_SUPER_PARTITION_GROUPS := xiaomi_dynamic_partitions
@@ -170,8 +162,7 @@ BOARD_XIAOMI_DYNAMIC_PARTITIONS_PARTITION_LIST := \
     vendor \
     vendor_dlkm \
     odm \
-    system_dlkm \
-    mi_ext
+    system_dlkm
 
 # Filesystem types
 TARGET_COPY_OUT_VENDOR     := vendor
@@ -190,25 +181,7 @@ BOARD_PARTITION_LIST := $(call to-upper, $(BOARD_XIAOMI_DYNAMIC_PARTITIONS_PARTI
 $(foreach p, $(BOARD_PARTITION_LIST), $(eval BOARD_$(p)IMAGE_FILE_SYSTEM_TYPE := erofs))
 $(foreach p, $(BOARD_PARTITION_LIST), $(eval TARGET_COPY_OUT_$(p) := $(call to-lower,$(p))))
 
-# ─────────────────────────────────────────────────────────
-# Crypto / FBE — DISABLED
-# OrangeFox boots without attempting to decrypt /data.
-# To re-enable: uncomment all lines below and restore fstab/RC changes.
-# ─────────────────────────────────────────────────────────
-BOARD_USES_METADATA_PARTITION    := true   # required: physical partition for /metadata
-# BOARD_USES_QCOM_FBE_DECRYPTION   := true
-# TW_INCLUDE_CRYPTO                := true
-# TW_INCLUDE_CRYPTO_FBE            := true
-# TW_INCLUDE_FBE_METADATA_DECRYPT  := true
-# TW_USE_FSCRYPT_POLICY            := 2
-# TW_CRYPTO_INLINECRYPT            := true
-# TW_CRYPTO_FS_TYPE                := f2fs
-# TW_CRYPTO_MNT_POINT              := /data
-# TW_CRYPTO_FS_OPTIONS             := noatime,nosuid,nodev,discard,reserve_root=32768,resgid=1065,fsync_mode=nobarrier,inlinecrypt,gc_merge
-# TW_CRYPTO_KEY_LOC                := /metadata/vold/metadata_encryption
-# TW_CRYPTO_FS_FLAGS               := "v2+inlinecrypt_optimized+wrappedkey_v0"
-# TW_CRYPTO_USE_VENDOR_KEYMINT      := true
-# TW_KEYMINT_CLIENT_CONNECT_TIMEOUT := 8000
+BOARD_USES_METADATA_PARTITION    := true
 
 # Security patch bypass (anti-rollback workaround)
 # Confirmed: version-os=99.87.36 (fastboot), ro.build.version.release=99.87.36 (getprop)
@@ -243,11 +216,11 @@ TW_FRAMERATE             := 120
 TW_BRIGHTNESS_PATH       := "/sys/class/backlight/panel0-backlight/brightness"
 TW_DEFAULT_BRIGHTNESS    := 1200
 TW_MAX_BRIGHTNESS        := 4094
-TW_NO_SCREEN_BLANK       := true
-# TW_SCREEN_BLANK_ON_BOOT removed: conflicts with TW_NO_SCREEN_BLANK
-TW_SCREEN_HEIGHT         := 2340
+TW_NO_SCREEN_BLANK  := true
+TW_SCREEN_BLANK_ON_BOOT  := true
 TW_Y_OFFSET              := 141
 TW_H_OFFSET              := -141
+TW_STATUS_ICONS_ALIGN    := center
 
 
 
@@ -343,10 +316,6 @@ TW_BACKUP_EXCLUSIONS  := /data/fonts
 TW_DEVICE_VERSION     := POCO_F8_Ultra
 
 # SDK versions
-# Confirmed from getprop:
-#   ro.board.first_api_level=202504 (format YYYYMM = April 2025, NOT an API level integer)
-#   ro.bootimage.build.version.sdk=36 → Android 16
+# Confirmed: ro.product.first_api_level=35, ro.board.first_api_level=35 (getprop)
 # fox_14.1 builds against SDK 34 AOSP base — BOARD_SYSTEMSDK_VERSIONS=34
 BOARD_SYSTEMSDK_VERSIONS := 34
-# FINGERPRINT
-BUILD_FINGERPRINT := "Redmi/myron/myron:16/BQ2A.250705.001-BP2A.250605.031.A3/OS3.0.303.0.WPMCNXM:user/release-keys"

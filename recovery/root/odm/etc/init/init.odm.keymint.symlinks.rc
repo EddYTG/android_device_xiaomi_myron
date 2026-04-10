@@ -6,11 +6,8 @@
 #   libjc_keymint_transport_nxp.so ← copy của libjc_keymint_transport-thales.so
 #   lib_android_keymaster_keymint_utils_V3.so ← copy từ vendor/lib64/
 #
-# FIX: libbinder_ndk.so → libbinder_ndk-sdk35.so
-#   weaver-service và keymint-strongbox dùng AIBinder_Class_setTransactionCodeToFunctionNameMap
-#   Symbol này chỉ có trong SDK 35 version của libbinder_ndk.
-#   Recovery base (SDK 34) không có → linker fall back về sdk35 version qua symlink.
+# Runtime symlink đã không còn cần thiết.
+# File này giữ nguyên để tương thích ngược với script check.
 on post-fs
-    # Symlink libbinder_ndk.so → sdk35 version (có AIBinder_Class_setTransactionCodeToFunctionNameMap)
-    symlink /vendor/lib64/libbinder_ndk-sdk35.so /vendor/lib64/libbinder_ndk.so
+    # No-op: lib aliases pre-baked vào ramdisk
     setprop odm.keymint.symlinks.done 1
