@@ -5,9 +5,7 @@ import /init.recovery.wifi.rc
 
 on init
     start vendor.boot-qti
-    # Disable MTE tagged pointers — kernel 6.12 SM8850 MTE causes
-    # libpixelflinger JIT SIGSEGV (SEGV_ACCERR) on tag mismatch
-    write /proc/sys/vm/mte_mode 0
+    setprop prepdecrypt.setpatch true
 
 on early-fs
     write /proc/sys/walt/sched_lib_name "recovery,magiskboot,Updater,updater,update_engine_sideload"
@@ -51,8 +49,11 @@ on property:twrp.modules.loaded=true
     # dùng bởi vendor.keymint-qti, gatekeeper, secure_element
     symlink /firmware /vendor/firmware_mnt
 
+on property:ro.crypto.state=encrypted && property:ro.boot.dynamic_partitions=true
+    start odm.prepdecrypt
+
 on property:twrp.variant.files_copied=1
-    # STARTUP ORDER — KeyMint / Weaver / SE HAL chain:
+    # CRITICAL STARTUP ORDER — Thales JavaCard decrypt chain:
     #
     # 1. se_omapi TRƯỚC TIÊN: cung cấp APDU channel tới eSE
     #    se_omapi cần vendor.secure_element (ISecureElement/eSE1)
@@ -72,6 +73,9 @@ on property:twrp.variant.files_copied=1
 
     # Touch report: start độc lập
     start odm.touch_report
+
+on property:crypto.ready=1
+    start odm.umountvendor
 
 on property:hwservicemanager.ready=true
     setprop sys.boot_completed 1

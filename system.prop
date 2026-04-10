@@ -32,17 +32,6 @@ vendor.gatekeeper.is_security_level_spu=0
 ro.minui.pixel_format=BGRX_8888
 ro.minui.overscan_percent=0
 
-# MTE (Memory Tagging Extension) — disable để tránh JIT tag mismatch crash
-# libpixelflinger JIT compile scanline shader bị SIGSEGV SEGV_ACCERR trên kernel 6.12
-# do MTE tag của pointer (0xb4) không match tag của execution address (0x00)
-# Confirmed từ log: fault addr 0xb400007775ea3000 (tag=0xb4) sau ArmToArm64Assembler JIT
-arm64.memtag.process.recovery=off
-ro.arm64.memtag.default=off
-ro.arm64.memtag.process.recovery=off
-persist.arm64.memtag.default=off
-libc.debug.malloc_options=
-malloc_tagged_pointers.enabled=false
-
 # Fuse passthrough — confirmed getprop
 persist.sys.fuse.passthrough.enable=true
 

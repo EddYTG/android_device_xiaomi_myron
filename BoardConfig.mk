@@ -75,10 +75,6 @@ BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true
 # Empty cmdline — all params via bootconfig (confirmed /proc/cmdline vs /proc/bootconfig)
 BOARD_KERNEL_CMDLINE :=
 
-# Disable MTE ở kernel level — kernel 6.12 SM8850 bật MTE mặc định
-# libpixelflinger JIT crash SEGV_ACCERR (tag 0xb4 vs 0x00) confirmed từ log
-BOARD_BOOTCONFIG += androidboot.memtag.bootctl=off
-
 # ─────────────────────────────────────────────────────────
 # A/B — dedicated recovery partition
 #
@@ -185,7 +181,27 @@ BOARD_PARTITION_LIST := $(call to-upper, $(BOARD_XIAOMI_DYNAMIC_PARTITIONS_PARTI
 $(foreach p, $(BOARD_PARTITION_LIST), $(eval BOARD_$(p)IMAGE_FILE_SYSTEM_TYPE := erofs))
 $(foreach p, $(BOARD_PARTITION_LIST), $(eval TARGET_COPY_OUT_$(p) := $(call to-lower,$(p))))
 
+# ─────────────────────────────────────────────────────────
+# Crypto / FBE
+# Confirmed from getprop:
+#   fbe.contents=aes-256-xts
+#   fbe.filenames=aes-256-cts:v2+inlinecrypt_optimized+wrappedkey_v0
+#   metadata.contents=aes-256-xts
+#   metadata.filenames=wrappedkey_v0
+#   prepdecrypt.setpatch=true
+# Confirmed from odm vintf: keymint v3 (strongbox NXP JavaCard)
+#   weaver-service runs from /odm/bin/hw/android.hardware.weaver-service
+# ─────────────────────────────────────────────────────────
 BOARD_USES_METADATA_PARTITION    := true
+BOARD_USES_QCOM_FBE_DECRYPTION   := true
+TW_INCLUDE_CRYPTO                := true
+TW_INCLUDE_CRYPTO_FBE            := true
+TW_INCLUDE_FBE_METADATA_DECRYPT  := true
+
+# KeyMint AIDL — v4 QTI TEE + v3 ODM strongbox (NXP/Thales JavaCard)
+TW_CRYPTO_USE_VENDOR_KEYMINT      := true
+TW_KEYMINT_CLIENT_CONNECT_TIMEOUT := 4000
+TW_USE_FSCRYPT_POLICY            := 2
 
 # Security patch bypass (anti-rollback workaround)
 # Confirmed: version-os=99.87.36 (fastboot), ro.build.version.release=99.87.36 (getprop)
