@@ -29,7 +29,7 @@ vendor.gatekeeper.disable_spu=true
 vendor.gatekeeper.is_security_level_spu=0
 
 # Display
-ro.minui.pixel_format=BGRX_8888
+ro.minui.pixel_format=RGBX_8888
 ro.minui.overscan_percent=0
 
 # Fuse passthrough — confirmed getprop
