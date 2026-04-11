@@ -92,13 +92,14 @@ export OF_ALLOW_DISABLE_NAVBAR=0
 export OF_OPTIONS_LIST_NUM=6
 
 # ─── OrangeFox Theme / Accent Color ──────────────────────────────────────────
-# FIX: Đặt về màu cam OrangeFox gốc. Không set → source fox_14.1 mặc định tím
+# FIX: Đặt về màu cam OrangeFox gốc. Không set → source fox_14.1 mặc định tím.
+export FOX_USE_DEFAULT_THEME=1
 
 # ─── Maintainer / variant ─────────────────────────────────────────────────────
 export FOX_BUILD_DEVICE="myron"
 export FOX_VARIANT="Xiaomi_myron_POCO_F8_Ultra"
 export FOX_MAINTAINER_PATCH_VERSION=$(date +%y%m%d)
-export OF_MAINTAINER="Mr.Anh"
+export OF_MAINTAINER="Antuna"
 
 # ─── Magisk ───────────────────────────────────────────────────────────────────
 export OF_MAGISK="/tmp/misc/Magisk.zip"

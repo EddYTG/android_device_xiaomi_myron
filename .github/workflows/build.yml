@@ -102,41 +102,6 @@ jobs:
         [ -d vendor/twrp ]       || { echo "ERROR: vendor/twrp missing!"; exit 1; }
         echo "Sync OK"
 
-    # ── Patch OFox source: fix màu sai trên myron (DRM path) ─────────────────
-    # Phân tích log build:
-    #   line 652-659: switch/case detect format connector → KHÔNG đụng vào
-    #   line 681:     format = DRM_FORMAT_RGBA8888  ← đây là format thực tế tạo FB
-    #   line 683:     printf("setting DRM_FORMAT_RGBA8888...")
-    #
-    # DRM_FORMAT_RGBA8888 little-endian = [A][B][G][R] → OFox render [R][G][B][A] → đảo R↔B
-    # Fix: đổi assignment line 681 thành DRM_FORMAT_BGRA8888
-    # DRM_FORMAT_BGRA8888 little-endian = [A][R][G][B] → đúng màu
-    - name: Patch OFox source — fix DRM color swap for myron (RGBA→BGRA assignment)
-      run: |
-        DRM="bootable/recovery/minuitwrp/graphics_drm.cpp"
-        [ -f "$DRM" ] || { echo "ERROR: $DRM not found!"; exit 1; }
-
-        echo "=== Before patch ==="
-        grep -n "format = DRM_FORMAT_\|setting DRM_FORMAT_" "$DRM" | head -10
-
-        # Idempotent
-        if grep -q "format = DRM_FORMAT_BGRA8888" "$DRM"; then
-          echo "Already patched, skip."
-          exit 0
-        fi
-
-        # Chỉ patch dòng assignment "format = DRM_FORMAT_RGBA8888"
-        # và dòng printf tương ứng — KHÔNG đụng switch/case
-        sed -i 's/format = DRM_FORMAT_RGBA8888/format = DRM_FORMAT_BGRA8888/' "$DRM"
-        sed -i 's/setting DRM_FORMAT_RGBA8888/setting DRM_FORMAT_BGRA8888/' "$DRM"
-
-        echo "=== After patch ==="
-        grep -n "format = DRM_FORMAT_\|setting DRM_FORMAT_" "$DRM" | head -10
-
-        grep -q "format = DRM_FORMAT_BGRA8888" "$DRM" \
-          && echo "Patch OK" \
-          || { echo "ERROR: patch failed!"; exit 1; }
-
     # ── Clone device tree ──────────────────────────────────────────────────────
     - name: Setup device tree
       run: |
