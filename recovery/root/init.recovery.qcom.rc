@@ -20,59 +20,61 @@ on fs
     chmod 0664 /dev/ion
     chown system system /dev/ion
     mkdir /mnt/vendor 0775 shell system
-    mkdir /mnt/vendor/persist 0775 shell system
+    mkdir /mnt/vendor/persist 0771 shell system
     mkdir /tmp/persist 0775 shell system
     mount none /tmp/persist /mnt/vendor/persist bind rec
     install_keyring
 
 on post-fs
+    # Tạo /persist symlink → /mnt/vendor/persist
+    start odm.persist-alias-setup
+    # Detect SKU → copy variant files → setprop twrp.variant.files_copied=1
     start odm.variant-script
 
 on boot
     setprop sys.usb.config adb
 
 on property:twrp.modules.loaded=true
-    # Mount firmware partition cho ADSP (cần cho KeyMint chain)
+    # Mount firmware partition (chứa eSE firmware TAs)
     mkdir /firmware
     mount vfat /dev/block/bootdevice/by-name/modem${ro.boot.slot_suffix} /firmware ro
 
-    # Boot ADSP — cần cho q6/audio pipeline của keymint-strongbox
+    # Boot ADSP
     wait /sys/kernel/boot_adsp/ssr
     write /sys/kernel/boot_adsp/ssr 1
 
-    # Chờ battery sysfs (myron: mca_business_battery driver)
+    # Battery sysfs
     wait /sys/class/power_supply/battery 5
     start vendor.health-default
 
-    # Symlink firmware vào /vendor/firmware_mnt (KHÔNG umount /vendor)
-    # Lưu ý: KHÔNG umount /vendor ở đây — vendor libs vẫn đang được
-    # dùng bởi vendor.keymint-qti, gatekeeper, secure_element
+    # Symlink firmware → vendor/firmware_mnt (eSE service cần)
     symlink /firmware /vendor/firmware_mnt
 
 on property:ro.crypto.state=encrypted && property:ro.boot.dynamic_partitions=true
-    start odm.prepdecrypt
+    start odm.decrypt-gate
 
 on property:twrp.variant.files_copied=1
-    # CRITICAL STARTUP ORDER — Thales JavaCard decrypt chain:
-    #
-    # 1. se_omapi TRƯỚC TIÊN: cung cấp APDU channel tới eSE
-    #    se_omapi cần vendor.secure_element (ISecureElement/eSE1)
-    # 2. odm.weaver-service: đọc Weaver key slots qua se_omapi
-    #    Cần ese_weaver.so symlink (đã được tạo ở post-fs)
-    # 3. odm.keymint-strongbox: dùng weaver key + libjc_keymint
-    #    Cần lib_android_keymaster_keymint_utils_V3.so symlink
-    #
-    # vibrator và touch_report không phụ thuộc vào chain này
-
-    start odm.se_omapi
-    start odm.weaver-service
-    start odm.keymint-strongbox
-
-    # Vibrator: start độc lập
+    # NXP JavaCard decrypt chain — đúng thứ tự:
+    # 1. Stage firmware TAs (sleep 18s → set twrp.myron.fix22zr.ready=1)
+    start odm.secure-element-ta-setup
+    # 2. Vibrator + touch: độc lập
     start odm.vibratorfeature-service
-
-    # Touch report: start độc lập
     start odm.touch_report
+
+on property:twrp.myron.fix22zr.ready=1
+    # TAs đã được stage → restart SE HAL với firmware đúng
+    stop vendor.secure_element
+    stop vendor.keymint-strongbox
+    stop odm.se_omapi
+    # Redirect firmware_mnt → staging dir
+    rm /vendor/firmware_mnt
+    symlink /tmp/secure_element_fwroot /vendor/firmware_mnt
+    # Start lại toàn bộ chain
+    start vendor.secure_element
+    start odm.se_omapi
+    start vendor.weaver_nxp
+    start vendor.keymint-strongbox
+    start odm.secure-element-followup
 
 on property:crypto.ready=1
     start odm.umountvendor

@@ -214,9 +214,7 @@ BOOT_SECURITY_PATCH          := $(PLATFORM_SECURITY_PATCH)
 # ─────────────────────────────────────────────────────────
 # Recovery
 # ─────────────────────────────────────────────────────────
-# RGBX_8888 → -DRECOVERY_RGBX → DRM_FORMAT_XBGR8888 → màu sai (cam→tím)
-# ABGR_8888 → -DRECOVERY_ABGR → DRM_FORMAT_RGBA8888 → màu đúng
-TARGET_RECOVERY_PIXEL_FORMAT := ABGR_8888
+TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
 TARGET_RECOVERY_QCOM_RTC_FIX := true
 TARGET_RECOVERY_FSTAB        := $(DEVICE_PATH)/recovery.fstab
 TW_INCLUDE_FASTBOOTD         := true

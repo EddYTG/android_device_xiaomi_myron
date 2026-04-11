@@ -1,0 +1,7 @@
+service odm.decrypt-gate /system/bin/decrypt-gate.sh
+    class hal
+    user root
+    group root
+    oneshot
+    disabled
+    seclabel u:r:recovery:s0

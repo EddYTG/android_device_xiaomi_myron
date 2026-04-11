@@ -1,0 +1,7 @@
+service odm.secure-element-ta-setup /system/bin/secure-element-ta-setup.sh
+    class hal
+    user root
+    group root
+    oneshot
+    disabled
+    seclabel u:r:recovery:s0
