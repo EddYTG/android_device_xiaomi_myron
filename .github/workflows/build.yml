@@ -103,40 +103,58 @@ jobs:
         echo "Sync OK"
 
     # ── Patch OFox source: fix màu sai trên myron (DRM path) ─────────────────
-    # Log build cũ: "setting DRM_FORMAT_ARGB8888" → patch ABGR → kết quả: "XBGR8888" vẫn sai
-    # Log build mới: "setting DRM_FORMAT_XBGR8888 and GGL_PIXEL_FORMAT_RGBA_8888"
+    # Log xác nhận: "setting DRM_FORMAT_XBGR8888" → màu cam thành tím (R↔B đảo)
+    # Fix: đổi format tạo FB từ XBGR8888 → XRGB8888
     #
-    # Phân tích byte order (little-endian, byte[0] là byte đầu tiên trong RAM):
-    #   XBGR8888: [R][G][B][X] → OFox đọc là [B][G][R][X] → R↔B đảo → CAM thành TÍM ✗
-    #   XRGB8888: [B][G][R][X] → OFox đọc là [R][G][B][X] → đúng màu ✓
-    #
-    # Fix: đổi tất cả X/ABGR8888 → XRGB8888 trong graphics_drm.cpp
-    - name: Patch OFox source — fix DRM color swap for myron (xBGR→XRGB)
+    # LƯU Ý: graphics_drm.cpp có switch() detect nhiều format → KHÔNG dùng sed -g
+    # Chỉ patch đúng 1 dòng: chỗ gọi drmModeAddFB2 hoặc set bo_format/drm_format
+    # Dùng Python để patch chính xác theo context, không đụng đến switch cases.
+    - name: Patch OFox source — fix DRM color swap for myron (XBGR→XRGB)
       run: |
         DRM="bootable/recovery/minuitwrp/graphics_drm.cpp"
-
         [ -f "$DRM" ] || { echo "ERROR: $DRM not found!"; exit 1; }
 
-        # Idempotent: đã đúng rồi thì skip
-        if grep -q "DRM_FORMAT_XRGB8888" "$DRM" && ! grep -q "DRM_FORMAT_XBGR8888\|DRM_FORMAT_ARGB8888\|DRM_FORMAT_ABGR8888" "$DRM"; then
-          echo "Already patched to XRGB8888, skip."
-          exit 0
-        fi
+        echo "=== DRM format lines before patch ==="
+        grep -n "DRM_FORMAT_" "$DRM" | grep -v "^.*\/\/" | head -20
 
-        echo "Before patch:"
-        grep -n "DRM_FORMAT_" "$DRM" | grep -i "8888" | head -10
+        python3 - <<'PYEOF'
+import re, sys
 
-        # Đổi tất cả variant sai → XRGB8888
-        sed -i 's/DRM_FORMAT_ABGR8888/DRM_FORMAT_XRGB8888/g' "$DRM"
-        sed -i 's/DRM_FORMAT_ARGB8888/DRM_FORMAT_XRGB8888/g' "$DRM"
-        sed -i 's/DRM_FORMAT_XBGR8888/DRM_FORMAT_XRGB8888/g' "$DRM"
+with open("bootable/recovery/minuitwrp/graphics_drm.cpp", "r") as f:
+    lines = f.readlines()
 
-        echo "After patch:"
-        grep -n "DRM_FORMAT_" "$DRM" | grep -i "8888" | head -10
+# Tìm và patch dòng set format cho framebuffer buffer object
+# Pattern: biến được assign DRM_FORMAT_XBGR8888 hoặc ARGB8888 NGOÀI switch/case
+# Dấu hiệu: dòng có "=" assignment, không phải "case DRM_FORMAT_"
+patched = 0
+for i, line in enumerate(lines):
+    # Bỏ qua switch case lines
+    stripped = line.strip()
+    if stripped.startswith("case DRM_FORMAT_"):
+        continue
+    # Patch assignment lines
+    if "DRM_FORMAT_XBGR8888" in line or "DRM_FORMAT_ARGB8888" in line or "DRM_FORMAT_ABGR8888" in line:
+        original = line
+        line = line.replace("DRM_FORMAT_XBGR8888", "DRM_FORMAT_XRGB8888")
+        line = line.replace("DRM_FORMAT_ARGB8888", "DRM_FORMAT_XRGB8888")
+        line = line.replace("DRM_FORMAT_ABGR8888", "DRM_FORMAT_XRGB8888")
+        if line != original:
+            lines[i] = line
+            patched += 1
+            print(f"Patched line {i+1}: {original.strip()} → {line.strip()}")
 
-        grep -q "DRM_FORMAT_XRGB8888" "$DRM" \
-          && echo "Patch OK: DRM format → XRGB8888" \
-          || { echo "ERROR: patch failed!"; exit 1; }
+if patched == 0:
+    print("WARNING: no assignment lines found to patch!")
+    sys.exit(1)
+
+with open("bootable/recovery/minuitwrp/graphics_drm.cpp", "w") as f:
+    f.writelines(lines)
+
+print(f"Total patched: {patched} line(s)")
+PYEOF
+
+        echo "=== DRM format lines after patch ==="
+        grep -n "DRM_FORMAT_" "$DRM" | grep -v "^.*\/\/" | head -20
 
     # ── Clone device tree ──────────────────────────────────────────────────────
     - name: Setup device tree
