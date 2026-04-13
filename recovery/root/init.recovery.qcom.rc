@@ -28,12 +28,12 @@ on fs
     chmod 0664 /dev/ion
     chown system system /dev/ion
     mkdir /mnt/vendor 0775 shell system
-    mkdir /mnt/vendor/persist 0771 root system
+    mkdir /mnt/vendor/persist 0775 shell system
+    mkdir /tmp/persist 0775 shell system
+    mount none /tmp/persist /mnt/vendor/persist bind rec
     install_keyring
 
 on post-fs
-    # /persist symlink → /mnt/vendor/persist
-    start odm.persist-alias-setup
     # Detect SKU → copy variant files → setprop twrp.variant.files_copied=1
     start odm.variant-script
 
@@ -82,12 +82,6 @@ on property:crypto.ready=1
 
 # ─── Services ────────────────────────────────────────────────────────────────
 
-service odm.persist-alias-setup /system/bin/persist-alias-setup.sh
-    disabled
-    oneshot
-    user root
-    group root
-    seclabel u:r:recovery:s0
 
 service odm.variant-script /odm/bin/variant-script.sh
     disabled

@@ -1,7 +1,0 @@
-service odm.persist-alias-setup /system/bin/persist-alias-setup.sh
-    class core
-    user root
-    group root
-    oneshot
-    disabled
-    seclabel u:r:recovery:s0
