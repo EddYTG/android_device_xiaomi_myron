@@ -40,16 +40,16 @@ ENABLE_SCHEDBOOST := true
 
 # ─────────────────────────────────────────────────────────
 # Platform
-# Confirmed: ro.board.platform=xiaomi_sm8850, ro.product.board=sun (getprop)
+# Confirmed: ro.board.platform=xiaomi_sm8750, ro.product.board=sun (getprop)
 # ─────────────────────────────────────────────────────────
-PRODUCT_PLATFORM      := sun
-TARGET_BOOTLOADER_BOARD_NAME := $(PRODUCT_PLATFORM)
+PRODUCT_PLATFORM      := canoe
+TARGET_BOOTLOADER_BOARD_NAME := canoe
 TARGET_NO_BOOTLOADER  := true
 TARGET_USES_UEFI      := true
 
-TARGET_BOARD_PLATFORM := sun
+TARGET_BOARD_PLATFORM := canoe
 TARGET_BOARD_PLATFORM_GPU := qcom-adreno840
-QCOM_BOARD_PLATFORMS  += sun
+QCOM_BOARD_PLATFORMS  += canoe
 
 # ─────────────────────────────────────────────────────────
 # Kernel — prebuilt GKI 6.12, boot header v4, vendor_boot style
@@ -170,7 +170,7 @@ BOARD_USES_VENDOR_DLKMIMAGE := true
 TARGET_COPY_OUT_VENDOR_DLKM := vendor_dlkm
 BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_TYPE := erofs
 
-# ODM — explicitly declared (matches SM8750 reference pattern)
+# ODM — explicitly declared (matches SM8850 reference pattern)
 # SINGLE SOURCE: recovery/root/odm/ only. Top-level odm/ removed.
 TARGET_COPY_OUT_ODM             := odm
 BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := erofs

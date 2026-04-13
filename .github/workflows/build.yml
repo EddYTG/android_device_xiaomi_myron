@@ -102,50 +102,6 @@ jobs:
         [ -d vendor/twrp ]       || { echo "ERROR: vendor/twrp missing!"; exit 1; }
         echo "Sync OK"
 
-    # ── Patch OFox source: fix BGR/RGB color swap on myron framebuffer ─────────
-    # graphics_fbdev.cpp đã có sẵn vòng swap R↔B trong overlay_flip():
-    #   #if defined(RECOVERY_BGRA)
-    #       ucfb_vaddr[idx] <-> ucfb_vaddr[idx+2]
-    #   #endif
-    # Android.bp của libminuitwrp dùng cflags (không phải cppflags).
-    # Chỉ cần thêm "-DRECOVERY_BGRA" vào cflags của cc_library_shared là xong.
-    - name: Patch OFox source — enable RECOVERY_BGRA for myron framebuffer swap
-      run: |
-        FBDEV="bootable/recovery/minuitwrp/graphics_fbdev.cpp"
-        BP="bootable/recovery/minuitwrp/Android.bp"
-
-        [ -f "$FBDEV" ] || { echo "ERROR: $FBDEV not found!"; exit 1; }
-        [ -f "$BP" ]    || { echo "ERROR: $BP not found!"; exit 1; }
-
-        # Sanity check
-        grep -q "RECOVERY_BGRA" "$FBDEV" \
-          && echo "OK: swap loop confirmed in graphics_fbdev.cpp" \
-          || { echo "ERROR: RECOVERY_BGRA swap loop missing in source!"; exit 1; }
-
-        # Idempotent
-        grep -q "RECOVERY_BGRA" "$BP" && { echo "Already patched, skip."; exit 0; }
-
-        # Thêm -DRECOVERY_BGRA vào cflags list của cc_library_shared
-        # Pattern cụ thể từ Android.bp thực tế:
-        #   cflags: [
-        #       "-DTWRES=\"/twres/\""   ← thêm vào sau dòng này
-        sed -i 's|"-DTWRES=\\"/twres/\\""|"-DTWRES=\\"/twres/\\"",\n        "-DRECOVERY_BGRA"|' "$BP"
-
-        # Verify
-        grep -q "RECOVERY_BGRA" "$BP" \
-          && echo "Patch OK: -DRECOVERY_BGRA added to cflags in Android.bp" \
-          || {
-            # Fallback: force swap trực tiếp trong .cpp
-            echo "sed patch failed, applying source fallback..."
-            sed -i 's/#if defined(RECOVERY_BGRA)/#if 1 \/\/ forced for myron/' "$FBDEV"
-            grep -q "forced for myron" "$FBDEV" \
-              && echo "Fallback OK." \
-              || { echo "ERROR: all patch methods failed!"; exit 1; }
-          }
-
-        echo "--- Result ---"
-        grep -n "RECOVERY_BGRA" "$BP" "$FBDEV" | head -10
-
     # ── Clone device tree ──────────────────────────────────────────────────────
     - name: Setup device tree
       run: |
@@ -166,14 +122,14 @@ jobs:
     - name: Download Magisk
       run: |
         mkdir -p /tmp/misc
-        MAGISK_VERSION="v30.7"
-        # Thử v30.7 trước, fallback về latest nếu fail
+        MAGISK_VERSION="v27.0"
+        # Thử v27.0 trước, fallback về latest nếu fail
         wget -q --show-progress \
           -O /tmp/misc/Magisk.zip \
           "https://github.com/topjohnwu/Magisk/releases/download/${MAGISK_VERSION}/Magisk-${MAGISK_VERSION}.apk" \
         && echo "Magisk ${MAGISK_VERSION} downloaded OK" \
         || {
-          echo "v30.7 not found, trying latest release..."
+          echo "v27.0 not found, trying latest release..."
           LATEST=$(curl -s https://api.github.com/repos/topjohnwu/Magisk/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
           wget -q --show-progress \
             -O /tmp/misc/Magisk.zip \

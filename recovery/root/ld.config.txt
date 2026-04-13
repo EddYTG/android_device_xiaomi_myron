@@ -1,4 +1,4 @@
-# Recovery linker namespace config — myron (SM8850 / sun)
+# Recovery linker namespace config — myron (SM8850 / canoe)
 # FIXED: Thêm /odm/lib64 vào đầu search path (Thales JavaCard libs)
 # FIXED: LD_CONFIG_FILE path: /ld.config.txt (root của ramdisk)
 

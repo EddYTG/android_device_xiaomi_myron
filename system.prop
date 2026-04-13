@@ -2,7 +2,7 @@
 # All values confirmed from adb shell getprop + /proc/bootconfig (stock ROM)
 #
 # ro.board.platform=xiaomi_sm8850 (getprop)
-# ro.product.board=sun (getprop)
+# ro.product.board=canoe (getprop)
 # ro.boot.dynamic_partitions=true (getprop)
 # ro.virtual_ab.enabled=true (getprop)
 # ro.virtual_ab.compression.enabled=true (getprop)
@@ -12,8 +12,8 @@
 #
 
 ro.adb.secure=0
-ro.board.platform=sun
-ro.product.board=sun
+ro.board.platform=canoe
+ro.product.board=canoe
 ro.boot.dynamic_partitions=true
 ro.virtual_ab.enabled=true
 ro.virtual_ab.compression.enabled=true

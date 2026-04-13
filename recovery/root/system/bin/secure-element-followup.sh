@@ -1,8 +1,8 @@
 #!/system/bin/sh
-# secure-element-followup.sh — myron
-# Deferred: dọn dẹp sidecars không cần cho decrypt
-# Chạy sau khi vendor.secure_element/keymint-strongbox/se_omapi đã start
+# secure-element-followup.sh — myron v6
+# Deferred sidecar: chạy sau khi SE chain (secure_element + keymint-strongbox) start
+# OMAPI = com.android.se Java app — không liên quan ở đây
 
 sleep 5
-# Không cần làm gì thêm trên myron — chain đơn giản hơn pudding
+# Không cần thêm gì trên myron — chain NXP đơn giản hơn pudding/thales
 setprop twrp.myron.secelt.followup_done 1

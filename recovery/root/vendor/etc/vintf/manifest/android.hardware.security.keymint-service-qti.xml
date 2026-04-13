@@ -1,10 +1,8 @@
 <!--
-    Input:
-        vendor/qcom/proprietary/securemsm/keymaster_utils/android.hardware.security.keymint-service-qti.xml
-    Confirmed: adb shell cat /vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml
-    Stock ROM declares version=3, NOT version=4.
-    Binary: android.hardware.security.onekeymint-service-qti (SM8850/sun platform uses onekeymint)
-    Service name: vendor.keymint-qti (confirmed init.svc.vendor.keymint-qti=running from getprop)
+    Vendor VINTF manifest — QTI KeyMint for myron (SM8850/canoe)
+    Confirmed from ROM: service name = vendor.keymint
+    Binary: android.hardware.security.onekeymint-service-qti
+    Version: 3 (confirmed from ROM dump - NOT version 4)
 -->
 <manifest version="2.0" type="device">
     <hal format="aidl">

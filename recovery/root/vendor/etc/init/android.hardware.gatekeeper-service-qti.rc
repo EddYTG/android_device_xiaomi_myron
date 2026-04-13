@@ -4,7 +4,7 @@ service vendor.gatekeeper_default /vendor/bin/hw/android.hardware.gatekeeper-rus
     group root
     disabled
     interface aidl android.hardware.gatekeeper.IGatekeeper/default
-    setenv LD_LIBRARY_PATH /vendor/lib64:/vendor/lib64/hw:/odm/lib64:/system/lib64:/sbin
+    setenv LD_LIBRARY_PATH /odm/lib64:/vendor/lib64:/vendor/lib64/hw:/system/lib64:/sbin
     seclabel u:r:recovery:s0
 
 on property:vendor.gatekeeper.is_security_level_spu=0

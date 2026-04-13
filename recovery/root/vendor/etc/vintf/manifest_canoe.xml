@@ -1,5 +1,5 @@
 <!--
-    Vendor VINTF manifest sun — myron (POCO F8 Ultra / SM8850 sun)
+    Vendor VINTF manifest canoe — myron (POCO F8 Ultra / SM8850 canoe)
     Mirror của manifest.xml cho sun platform compatibility.
 
     CRITICAL FIX: Xóa keymint AIDL duplicate — xem manifest.xml để biết lý do.
