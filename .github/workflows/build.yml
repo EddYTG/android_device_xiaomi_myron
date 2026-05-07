@@ -1,17 +1,13 @@
 name: Build Nuitka Wheel
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:  # chạy thủ công
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: windows-latest  # build trên Windows → đúng platform
+    runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -20,9 +16,10 @@ jobs:
       - name: Install build tools
         run: pip install wheel setuptools build
 
-      - name: Extract and build wheel
+      - name: Download and build Nuitka wheel
         run: |
-          tar -xzf nuitka-4.0.8.tar.gz
+          pip download nuitka==4.0.8 --no-binary nuitka --dest ./src
+          tar -xzf ./src/nuitka-4.0.8.tar.gz
           cd nuitka-4.0.8
           python -m build --wheel --no-isolation
 
