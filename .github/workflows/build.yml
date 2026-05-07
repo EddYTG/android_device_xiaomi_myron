@@ -1,30 +1,13 @@
-name: Build Nuitka Wheel
+- name: Download PyInstaller wheels
+  run: |
+    pip download pyinstaller==6.20.0 `
+      --dest ./pyinstaller-wheels `
+      --platform win_amd64 `
+      --python-version 311 `
+      --only-binary=:all:
 
-on:
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: windows-latest
-
-    steps:
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install build tools
-        run: pip install wheel setuptools build
-
-      - name: Download and build Nuitka wheel
-        run: |
-          pip download nuitka==4.0.8 --no-binary nuitka --dest ./src
-          tar -xzf ./src/nuitka-4.0.8.tar.gz
-          cd nuitka-4.0.8
-          python -m build --wheel --no-isolation
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nuitka-wheel
-          path: nuitka-4.0.8/dist/*.whl
+- name: Upload artifact
+  uses: actions/upload-artifact@v4
+  with:
+    name: pyinstaller-wheels
+    path: ./pyinstaller-wheels/*.whl
