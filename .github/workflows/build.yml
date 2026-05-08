@@ -1,14 +1,14 @@
-name: Build Wheels
+name: Download Python Wheels Offline
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-nuitka:
+  download-wheels:
     runs-on: windows-latest
 
     steps:
-      - name: Setup Python
+      - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -16,29 +16,93 @@ jobs:
       - name: Install build tools
         run: pip install wheel setuptools build
 
-      - name: Download and build Nuitka wheel
-        run: |
-          pip download nuitka==4.0.8 --no-binary nuitka --dest ./src
-          tar -xzf ./src/nuitka-4.0.8.tar.gz
-          cd nuitka-4.0.8
-          python -m build --wheel --no-isolation
+      - name: Create output dir
+        run: New-Item -ItemType Directory -Force -Path ./wheels | Out-Null
 
-      - name: Download PyInstaller wheels
+      # ── Các package có prebuilt wheel trên PyPI ───────────────────────────
+      # Dùng pip download KHÔNG có --platform/--python-version
+      # để pip chạy trên đúng môi trường windows-latest (win64/py311)
+      # → tự resolve đúng wheel + kéo toàn bộ dependencies
+      - name: Download prebuilt wheels (with all deps)
         run: |
-          pip download pyinstaller==6.20.0 `
-            --dest ./pyinstaller-wheels `
-            --platform win_amd64 `
-            --python-version 311 `
-            --only-binary=:all:
+          $packages = @(
+            "pygame",
+            "opencv-python-headless",
+            "Pillow",
+            "numpy",
+            "scipy",
+            "pandas",
+            "matplotlib",
+            "openpyxl",
+            "xlrd",
+            "xlsxwriter",
+            "pyinstaller",
+            "requests",
+            "tqdm",
+            "colorama",
+            "rich",
+            "pyperclip",
+            "psutil",
+            "pyserial",
+            "pypdf2",
+            "fpdf2",
+            "sqlalchemy",
+            "pymysql",
+            "pyqt5",
+            "customtkinter"
+          )
 
-      - name: Upload Nuitka wheel
+          foreach ($pkg in $packages) {
+            Write-Host ">>> Downloading $pkg + deps ..."
+            pip download $pkg --dest ./wheels
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "FAILED: $pkg"
+            }
+          }
+
+      # ── Các package cần build từ source ───────────────────────────────────
+      # pip wheel sẽ: build wheel + kéo toàn bộ deps vào ./wheels
+      - name: Build nuitka + deps
+        run: pip wheel nuitka --wheel-dir ./wheels
+
+      - name: Build xlwt + deps
+        run: pip wheel xlwt --wheel-dir ./wheels
+
+      - name: Build reportlab + deps
+        run: pip wheel reportlab --wheel-dir ./wheels
+
+      # ── Tạo script cài offline cho máy Win10 ─────────────────────────────
+      - name: Create install script
+        run: |
+          @'
+          @echo off
+          echo Installing all wheels offline...
+          pip install --no-index --find-links="%~dp0" ^
+            pygame ^
+            opencv-python-headless ^
+            Pillow ^
+            numpy scipy pandas matplotlib ^
+            openpyxl xlrd xlwt xlsxwriter ^
+            pyinstaller nuitka ^
+            requests tqdm colorama rich pyperclip psutil pyserial ^
+            pypdf2 fpdf2 reportlab ^
+            sqlalchemy pymysql ^
+            pyqt5 customtkinter
+          echo Done!
+          pause
+          '@ | Out-File -FilePath ./wheels/install_offline.bat -Encoding ascii
+
+      # ── Summary ───────────────────────────────────────────────────────────
+      - name: Show files
+        run: |
+          $files = Get-ChildItem ./wheels
+          Write-Host "Total: $($files.Count) files"
+          $files | ForEach-Object { Write-Host $_.Name }
+
+      # ── Upload ────────────────────────────────────────────────────────────
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nuitka-wheel
-          path: nuitka-4.0.8/dist/*.whl
-
-      - name: Upload PyInstaller wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: pyinstaller-wheels
-          path: ./pyinstaller-wheels/*.whl
+          name: python-wheels-win64-py311
+          path: ./wheels/
+          retention-days: 30
