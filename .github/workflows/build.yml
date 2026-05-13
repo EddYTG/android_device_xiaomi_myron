@@ -1,4 +1,4 @@
-name: Download Python Wheels Offline
+name: Download werkzeug + filelock wheels (Win10 + Python 3.11)
 
 on:
   workflow_dispatch:
@@ -11,98 +11,22 @@ jobs:
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: Install build tools
-        run: pip install wheel setuptools build
-
-      - name: Create output dir
-        run: New-Item -ItemType Directory -Force -Path ./wheels | Out-Null
-
-      # ── Các package có prebuilt wheel trên PyPI ───────────────────────────
-      # Dùng pip download KHÔNG có --platform/--python-version
-      # để pip chạy trên đúng môi trường windows-latest (win64/py311)
-      # → tự resolve đúng wheel + kéo toàn bộ dependencies
-      - name: Download prebuilt wheels (with all deps)
+      - name: Download wheels
         run: |
-          $packages = @(
-            "pygame",
-            "opencv-python-headless",
-            "Pillow",
-            "numpy",
-            "scipy",
-            "pandas",
-            "matplotlib",
-            "openpyxl",
-            "xlrd",
-            "xlsxwriter",
-            "pyinstaller",
-            "requests",
-            "tqdm",
-            "colorama",
-            "rich",
-            "pyperclip",
-            "psutil",
-            "pyserial",
-            "pypdf2",
-            "fpdf2",
-            "sqlalchemy",
-            "pymysql",
-            "pyqt5",
-            "customtkinter"
-          )
+          pip download werkzeug filelock `
+            --dest wheels `
+            --platform win_amd64 `
+            --python-version 3.11 `
+            --implementation cp `
+            --abi cp311 `
+            --only-binary=:all:
 
-          foreach ($pkg in $packages) {
-            Write-Host ">>> Downloading $pkg + deps ..."
-            pip download $pkg --dest ./wheels
-            if ($LASTEXITCODE -ne 0) {
-              Write-Warning "FAILED: $pkg"
-            }
-          }
-
-      # ── Các package cần build từ source ───────────────────────────────────
-      # pip wheel sẽ: build wheel + kéo toàn bộ deps vào ./wheels
-      - name: Build nuitka + deps
-        run: pip wheel nuitka --wheel-dir ./wheels
-
-      - name: Build xlwt + deps
-        run: pip wheel xlwt --wheel-dir ./wheels
-
-      - name: Build reportlab + deps
-        run: pip wheel reportlab --wheel-dir ./wheels
-
-      # ── Tạo script cài offline cho máy Win10 ─────────────────────────────
-      - name: Create install script
-        run: |
-          @'
-          @echo off
-          echo Installing all wheels offline...
-          pip install --no-index --find-links="%~dp0" ^
-            pygame ^
-            opencv-python-headless ^
-            Pillow ^
-            numpy scipy pandas matplotlib ^
-            openpyxl xlrd xlwt xlsxwriter ^
-            pyinstaller nuitka ^
-            requests tqdm colorama rich pyperclip psutil pyserial ^
-            pypdf2 fpdf2 reportlab ^
-            sqlalchemy pymysql ^
-            pyqt5 customtkinter
-          echo Done!
-          pause
-          '@ | Out-File -FilePath ./wheels/install_offline.bat -Encoding ascii
-
-      # ── Summary ───────────────────────────────────────────────────────────
-      - name: Show files
-        run: |
-          $files = Get-ChildItem ./wheels
-          Write-Host "Total: $($files.Count) files"
-          $files | ForEach-Object { Write-Host $_.Name }
-
-      # ── Upload ────────────────────────────────────────────────────────────
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: python-wheels-win64-py311
-          path: ./wheels/
+          name: werkzeug-filelock-win-py311
+          path: wheels/
           retention-days: 30
+          
