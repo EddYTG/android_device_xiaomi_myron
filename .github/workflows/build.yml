@@ -1,32 +1,124 @@
-name: Download werkzeug + filelock wheels (Win10 + Python 3.11)
+name: Bundle npm offline cho Windows
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:          # Chạy thủ công từ tab Actions
+    inputs:
+      node_version:
+        description: 'Phiên bản Node.js (phải khớp với máy Windows)'
+        required: true
+        default: '20'
 
 jobs:
-  download-wheels:
-    runs-on: windows-latest
+  bundle:
+    runs-on: windows-latest   # Build trên Windows → binary native (sharp, etc.) đúng platform
 
     steps:
-      - name: Setup Python 3.11
-        uses: actions/setup-python@v5
+      # ── 1. Checkout code ──────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Setup Node đúng version ────────────────────────────────────────
+      - name: Setup Node.js ${{ github.event.inputs.node_version }}
+        uses: actions/setup-node@v4
         with:
-          python-version: "3.11"
+          node-version: ${{ github.event.inputs.node_version }}
 
-      - name: Download wheels
+      # ── 3. Tạo package.json nếu chưa có (liệt kê đủ dependencies) ─────────
+      #    Bỏ qua bước này nếu repo đã có package.json
+      - name: Tạo package.json nếu thiếu
+        shell: pwsh
         run: |
-          pip download werkzeug filelock `
-            --dest wheels `
-            --platform win_amd64 `
-            --python-version 3.11 `
-            --implementation cp `
-            --abi cp311 `
-            --only-binary=:all:
+          if (-not (Test-Path "package.json")) {
+            Write-Host "package.json chưa có — tạo mới từ danh sách cố định"
+            $pkg = @{
+              name    = "chat-app"
+              version = "1.0.0"
+              type    = "module"
+              scripts = @{ start = "node app.js" }
+              dependencies = @{
+                "dotenv"          = "*"
+                "express"         = "*"
+                "socket.io"       = "*"
+                "sequelize"       = "*"
+                "mariadb"         = "*"
+                "bcryptjs"        = "*"
+                "jsonwebtoken"    = "*"
+                "cookie-parser"   = "*"
+                "multer"          = "*"
+                "busboy"          = "*"
+                "express-rate-limit" = "*"
+                "sharp"           = "*"
+              }
+            }
+            $pkg | ConvertTo-Json -Depth 5 | Set-Content "package.json" -Encoding UTF8
+          } else {
+            Write-Host "package.json đã có — dùng luôn"
+            # Đảm bảo sharp có trong dependencies
+            $pkg = Get-Content "package.json" | ConvertFrom-Json
+            if (-not $pkg.dependencies.sharp) {
+              Write-Host "Thêm sharp vào dependencies"
+              $pkg.dependencies | Add-Member -NotePropertyName "sharp" -NotePropertyValue "*" -Force
+              $pkg | ConvertTo-Json -Depth 5 | Set-Content "package.json" -Encoding UTF8
+            }
+          }
 
+      # ── 4. Install tất cả packages (bao gồm native binaries cho Windows) ──
+      - name: npm install
+        shell: pwsh
+        run: |
+          npm install --prefer-offline
+          # Rebuild sharp với đúng platform/arch
+          npm rebuild sharp
+          Write-Host "Danh sách packages đã cài:"
+          npm list --depth=0
+
+      # ── 5. Đóng gói node_modules + package.json + package-lock.json ────────
+      - name: Đóng gói offline bundle
+        shell: pwsh
+        run: |
+          $outDir  = "offline-bundle"
+          $zipName = "npm-offline-windows-node${{ github.event.inputs.node_version }}.zip"
+
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+
+          # Copy node_modules
+          Write-Host "Copy node_modules..."
+          Copy-Item -Path "node_modules" -Destination "$outDir\node_modules" -Recurse -Force
+
+          # Copy lock files để npm install --offline hoạt động đúng
+          Copy-Item "package.json"      "$outDir\package.json"
+          if (Test-Path "package-lock.json") {
+            Copy-Item "package-lock.json" "$outDir\package-lock.json"
+          }
+
+          # Tạo file hướng dẫn dùng
+          $readme = @"
+          === HƯỚNG DẪN CÀI OFFLINE ===
+
+          1. Giải nén thư mục này vào thư mục dự án (cùng chỗ với app.js)
+          2. Đảm bảo đã cài Node.js ${{ github.event.inputs.node_version }} trên máy Windows
+          3. Chạy lệnh sau để verify (không cần mạng):
+               npm install --offline
+          4. Khởi động server:
+               node app.js
+
+          Build date : $(Get-Date -Format 'yyyy-MM-dd HH:mm')
+          Node version: ${{ github.event.inputs.node_version }}
+          Platform    : Windows x64
+          "@
+          $readme.Trim() -replace "          ", "" | Set-Content "$outDir\README_OFFLINE.txt" -Encoding UTF8
+
+          # Nén thành ZIP
+          Write-Host "Nén thành $zipName ..."
+          Compress-Archive -Path "$outDir\*" -DestinationPath $zipName -Force
+
+          $sizeMB = [math]::Round((Get-Item $zipName).Length / 1MB, 1)
+          Write-Host "Xong! $zipName — $sizeMB MB"
+
+      # ── 6. Upload artifact để tải về ──────────────────────────────────────
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: werkzeug-filelock-win-py311
-          path: wheels/
-          retention-days: 30
-          
+          name: npm-offline-windows-node${{ github.event.inputs.node_version }}
+          path: npm-offline-windows-node${{ github.event.inputs.node_version }}.zip
+          retention-days: 30   # Giữ 30 ngày rồi tự xóa
