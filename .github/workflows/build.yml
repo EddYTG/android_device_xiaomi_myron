@@ -115,7 +115,7 @@ jobs:
         run: |
           if [ ! -f jni/zygisk.hpp ]; then
             curl -fsSL \
-              "https://raw.githubusercontent.com/topjohnwu/zygisk-api/v4.1.0/zygisk.hpp" \
+              "https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp" \
               -o jni/zygisk.hpp
           fi
           echo "zygisk.hpp: $(wc -c < jni/zygisk.hpp) bytes"
