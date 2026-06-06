@@ -117,6 +117,14 @@ jobs:
           sudo apt-get install -y cmake ninja-build
 
           git clone --depth 1 https://github.com/jmpews/Dobby.git dobby_src
+
+          # Patch closure_bridge_arm64.asm: doi @PAGE/@PAGEOFF sang :pg_hi21:/:lo12:
+          # @PAGE/@PAGEOFF la Apple assembler syntax, Linux dung :pg_hi21:/:lo12:
+          ASM_FILE="dobby_src/source/TrampolineBridge/ClosureTrampolineBridge/arm64/closure_bridge_arm64.asm"
+          sed -i 's/\(adrp.*\)@PAGE/\1:pg_hi21:/g' "$ASM_FILE"
+          sed -i 's/\(add.*\)@PAGEOFF/\1:lo12:/g'  "$ASM_FILE"
+          echo "=== Patched ASM ==="
+          cat "$ASM_FILE"
           NDK_HOME="${ANDROID_SDK_ROOT}/ndk/${{ env.NDK_VERSION }}"
 
           build_dobby() {
