@@ -1,124 +1,283 @@
-name: Bundle npm offline cho Windows
+name: Build mTalk Copy Unlocker
 
 on:
-  workflow_dispatch:          # Chạy thủ công từ tab Actions
-    inputs:
-      node_version:
-        description: 'Phiên bản Node.js (phải khớp với máy Windows)'
-        required: true
-        default: '20'
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  bundle:
-    runs-on: windows-latest   # Build trên Windows → binary native (sharp, etc.) đúng platform
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+
+    env:
+      NDK_VERSION: "25.2.9519653"
+      BUILD_TOOLS_VERSION: "34.0.0"
+      COMPILE_SDK: "34"
+      JAVA_VERSION: "11"
+      DRIVE_FILE_ID: "1bAz4vrDJbkSSNVBUgae36Zd8HULQlDX7"
 
     steps:
-      # ── 1. Checkout code ──────────────────────────────────────────────────
-      - name: Checkout
-        uses: actions/checkout@v4
+      # ──────────────────────────────────────────────────────────────
+      # 1. Download source ZIP từ Google Drive
+      # ──────────────────────────────────────────────────────────────
+      - name: Download source from Google Drive
+        run: |
+          FILE_ID="${{ env.DRIVE_FILE_ID }}"
 
-      # ── 2. Setup Node đúng version ────────────────────────────────────────
-      - name: Setup Node.js ${{ github.event.inputs.node_version }}
-        uses: actions/setup-node@v4
+          # Drive large-file: lần 1 lấy confirm token, lần 2 download thật
+          curl -fsSc /tmp/cookies.txt \
+            "https://drive.google.com/uc?export=download&id=${FILE_ID}" \
+            -o /tmp/check.html
+
+          CONFIRM=$(grep -oP 'confirm=\K[^&"]+' /tmp/check.html | head -1)
+
+          if [ -n "$CONFIRM" ]; then
+            echo "Using confirm token: $CONFIRM"
+            curl -fsSL -b /tmp/cookies.txt \
+              "https://drive.google.com/uc?export=download&confirm=${CONFIRM}&id=${FILE_ID}" \
+              -o source.zip
+          else
+            # File nhỏ — không cần confirm
+            curl -fsSL \
+              "https://drive.google.com/uc?export=download&id=${FILE_ID}" \
+              -o source.zip
+          fi
+
+          echo "Downloaded: $(wc -c < source.zip) bytes"
+          unzip -l source.zip | head -30
+
+      # ──────────────────────────────────────────────────────────────
+      # 2. Extract source
+      # ──────────────────────────────────────────────────────────────
+      - name: Extract source
+        run: |
+          unzip -q source.zip
+
+          # Tự detect root dir trong zip (có thể là zygisk_mtalk/ hoặc thẳng)
+          ROOT=$(unzip -l source.zip | awk 'NR==4{print $4}' | cut -d/ -f1)
+          echo "Detected root dir: $ROOT"
+
+          if [ -d "$ROOT" ] && [ "$ROOT" != "." ]; then
+            # Move contents lên 1 cấp
+            shopt -s dotglob
+            mv "$ROOT"/* .
+            rmdir "$ROOT" 2>/dev/null || true
+          fi
+
+          echo "Source tree:"
+          find . -not -path './.git/*' -not -name 'source.zip' | sort | head -40
+
+      # ──────────────────────────────────────────────────────────────
+      # 3. Java
+      # ──────────────────────────────────────────────────────────────
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
         with:
-          node-version: ${{ github.event.inputs.node_version }}
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
 
-      # ── 3. Tạo package.json nếu chưa có (liệt kê đủ dependencies) ─────────
-      #    Bỏ qua bước này nếu repo đã có package.json
-      - name: Tạo package.json nếu thiếu
-        shell: pwsh
+      # ──────────────────────────────────────────────────────────────
+      # 4. Android SDK — NDK + build-tools
+      # ──────────────────────────────────────────────────────────────
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK and build-tools
         run: |
-          if (-not (Test-Path "package.json")) {
-            Write-Host "package.json chưa có — tạo mới từ danh sách cố định"
-            $pkg = @{
-              name    = "chat-app"
-              version = "1.0.0"
-              type    = "module"
-              scripts = @{ start = "node app.js" }
-              dependencies = @{
-                "dotenv"          = "*"
-                "express"         = "*"
-                "socket.io"       = "*"
-                "sequelize"       = "*"
-                "mariadb"         = "*"
-                "bcryptjs"        = "*"
-                "jsonwebtoken"    = "*"
-                "cookie-parser"   = "*"
-                "multer"          = "*"
-                "busboy"          = "*"
-                "express-rate-limit" = "*"
-                "sharp"           = "*"
-              }
-            }
-            $pkg | ConvertTo-Json -Depth 5 | Set-Content "package.json" -Encoding UTF8
-          } else {
-            Write-Host "package.json đã có — dùng luôn"
-            # Đảm bảo sharp có trong dependencies
-            $pkg = Get-Content "package.json" | ConvertFrom-Json
-            if (-not $pkg.dependencies.sharp) {
-              Write-Host "Thêm sharp vào dependencies"
-              $pkg.dependencies | Add-Member -NotePropertyName "sharp" -NotePropertyValue "*" -Force
-              $pkg | ConvertTo-Json -Depth 5 | Set-Content "package.json" -Encoding UTF8
-            }
-          }
+          sdkmanager --install \
+            "ndk;${{ env.NDK_VERSION }}" \
+            "build-tools;${{ env.BUILD_TOOLS_VERSION }}" \
+            "platforms;android-${{ env.COMPILE_SDK }}"
 
-      # ── 4. Install tất cả packages (bao gồm native binaries cho Windows) ──
-      - name: npm install
-        shell: pwsh
+      # ──────────────────────────────────────────────────────────────
+      # 5. Cache NDK intermediates
+      # ──────────────────────────────────────────────────────────────
+      - name: Cache NDK build output
+        uses: actions/cache@v4
+        with:
+          path: jni/libs
+          key: ndk-libs-${{ runner.os }}-${{ hashFiles('jni/**') }}
+          restore-keys: ndk-libs-${{ runner.os }}-
+
+      # ──────────────────────────────────────────────────────────────
+      # 6. Download zygisk.hpp
+      # ──────────────────────────────────────────────────────────────
+      - name: Download zygisk.hpp
         run: |
-          npm install --prefer-offline
-          # Rebuild sharp với đúng platform/arch
-          npm rebuild sharp
-          Write-Host "Danh sách packages đã cài:"
-          npm list --depth=0
+          if [ ! -f jni/zygisk.hpp ]; then
+            curl -fsSL \
+              "https://raw.githubusercontent.com/topjohnwu/zygisk-api/v4.1.0/zygisk.hpp" \
+              -o jni/zygisk.hpp
+          fi
+          echo "zygisk.hpp: $(wc -c < jni/zygisk.hpp) bytes"
 
-      # ── 5. Đóng gói node_modules + package.json + package-lock.json ────────
-      - name: Đóng gói offline bundle
-        shell: pwsh
+      # ──────────────────────────────────────────────────────────────
+      # 7. Download Dobby prebuilt
+      # ──────────────────────────────────────────────────────────────
+      - name: Download Dobby prebuilt
         run: |
-          $outDir  = "offline-bundle"
-          $zipName = "npm-offline-windows-node${{ github.event.inputs.node_version }}.zip"
+          mkdir -p jni/include jni/libs/arm64-v8a jni/libs/armeabi-v7a
 
-          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          DOBBY_BASE="https://github.com/jmpews/Dobby/releases/download/v1.0.0"
 
-          # Copy node_modules
-          Write-Host "Copy node_modules..."
-          Copy-Item -Path "node_modules" -Destination "$outDir\node_modules" -Recurse -Force
+          if [ ! -f jni/libs/arm64-v8a/libdobby.a ]; then
+            curl -fsSL "${DOBBY_BASE}/arm64-v8a.zip" -o /tmp/dobby_arm64.zip
+            unzip -qjo /tmp/dobby_arm64.zip "*.a" -d jni/libs/arm64-v8a/
+            unzip -qjo /tmp/dobby_arm64.zip "*.h" -d jni/include/ 2>/dev/null || true
+          fi
 
-          # Copy lock files để npm install --offline hoạt động đúng
-          Copy-Item "package.json"      "$outDir\package.json"
-          if (Test-Path "package-lock.json") {
-            Copy-Item "package-lock.json" "$outDir\package-lock.json"
-          }
+          if [ ! -f jni/libs/armeabi-v7a/libdobby.a ]; then
+            curl -fsSL "${DOBBY_BASE}/armeabi-v7a.zip" -o /tmp/dobby_arm32.zip
+            unzip -qjo /tmp/dobby_arm32.zip "*.a" -d jni/libs/armeabi-v7a/
+          fi
 
-          # Tạo file hướng dẫn dùng
-          $readme = @"
-          === HƯỚNG DẪN CÀI OFFLINE ===
+          ls -lh jni/libs/arm64-v8a/ jni/libs/armeabi-v7a/
 
-          1. Giải nén thư mục này vào thư mục dự án (cùng chỗ với app.js)
-          2. Đảm bảo đã cài Node.js ${{ github.event.inputs.node_version }} trên máy Windows
-          3. Chạy lệnh sau để verify (không cần mạng):
-               npm install --offline
-          4. Khởi động server:
-               node app.js
+      # ──────────────────────────────────────────────────────────────
+      # 8. Build native .so
+      # ──────────────────────────────────────────────────────────────
+      - name: Build native Zygisk module
+        run: |
+          NDK_HOME="${ANDROID_SDK_ROOT}/ndk/${{ env.NDK_VERSION }}"
 
-          Build date : $(Get-Date -Format 'yyyy-MM-dd HH:mm')
-          Node version: ${{ github.event.inputs.node_version }}
-          Platform    : Windows x64
-          "@
-          $readme.Trim() -replace "          ", "" | Set-Content "$outDir\README_OFFLINE.txt" -Encoding UTF8
+          $NDK_HOME/ndk-build \
+            NDK_PROJECT_PATH=. \
+            NDK_APPLICATION_MK=jni/Application.mk \
+            NDK_LIBS_OUT=libs \
+            APP_ABI="arm64-v8a armeabi-v7a" \
+            APP_OPTIM=release \
+            -j$(nproc)
 
-          # Nén thành ZIP
-          Write-Host "Nén thành $zipName ..."
-          Compress-Archive -Path "$outDir\*" -DestinationPath $zipName -Force
+          find libs -name "*.so" -exec ls -lh {} \;
 
-          $sizeMB = [math]::Round((Get-Item $zipName).Length / 1MB, 1)
-          Write-Host "Xong! $zipName — $sizeMB MB"
+      # ──────────────────────────────────────────────────────────────
+      # 9. Compile Java → DEX
+      # ──────────────────────────────────────────────────────────────
+      - name: Compile Java payload to DEX
+        run: |
+          ANDROID_JAR="${ANDROID_SDK_ROOT}/platforms/android-${{ env.COMPILE_SDK }}/android.jar"
+          BUILD_TOOLS="${ANDROID_SDK_ROOT}/build-tools/${{ env.BUILD_TOOLS_VERSION }}"
+          CLASSES_OUT="build/classes"
+          mkdir -p "$CLASSES_OUT"
 
-      # ── 6. Upload artifact để tải về ──────────────────────────────────────
+          javac -source 8 -target 8 \
+            -cp "$ANDROID_JAR" \
+            -d "$CLASSES_OUT" \
+            src/main/java/com/mtalk/copyhook/CopyHookEntry.java
+
+          "$BUILD_TOOLS/d8" \
+            --lib "$ANDROID_JAR" \
+            --output build/ \
+            $(find "$CLASSES_OUT" -name "*.class")
+
+          mv build/classes.dex build/hook.dex
+          echo "hook.dex: $(wc -c < build/hook.dex) bytes"
+
+      # ──────────────────────────────────────────────────────────────
+      # 10. Resolve version
+      # ──────────────────────────────────────────────────────────────
+      - name: Resolve version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="dev-$(date +%Y%m%d)-${GITHUB_SHA::7}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      # ──────────────────────────────────────────────────────────────
+      # 11. Package Magisk module ZIP
+      # ──────────────────────────────────────────────────────────────
+      - name: Package Magisk module ZIP
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          OUT="staging"
+          mkdir -p "$OUT/zygisk" "$OUT/META-INF/com/google/android"
+
+          sed "s/^version=.*/version=${VERSION}/" module.prop > "$OUT/module.prop"
+
+          cp libs/arm64-v8a/libmtalk_copy_hook.so   "$OUT/zygisk/arm64-v8a.so"
+          cp libs/armeabi-v7a/libmtalk_copy_hook.so  "$OUT/zygisk/armeabi-v7a.so"
+          cp build/hook.dex "$OUT/hook.dex"
+
+          cat > "$OUT/customize.sh" << CEOF
+          #!/system/bin/sh
+          ui_print "mTalk Copy Unlocker ${VERSION}"
+          ui_print "Requires: Zygisk enabled (Magisk 24+ or KernelSU + ZygiskNext)"
+          chmod 644 "\${0%/*}/hook.dex"
+          CEOF
+
+          cat > "$OUT/META-INF/com/google/android/update-binary" << 'UEOF'
+          #!/system/bin/sh
+          SKIPUNZIP=1
+          extract() { unzip -o "$ZIPFILE" "$1" -d "$2"; }
+          extract 'module.prop'  "$MODPATH"
+          extract 'hook.dex'     "$MODPATH"
+          extract 'customize.sh' "$MODPATH"
+          extract 'zygisk/'      "$MODPATH"
+          chmod 755 "$MODPATH/customize.sh"
+          "$MODPATH/customize.sh"
+          UEOF
+
+          echo "#MAGISK" > "$OUT/META-INF/com/google/android/updater-script"
+
+          OUTPUT_ZIP="mtalk_copy_hook_${VERSION}.zip"
+          cd "$OUT" && zip -r9 "../${OUTPUT_ZIP}" . && cd ..
+
+          echo "output_zip=${OUTPUT_ZIP}" >> "$GITHUB_ENV"
+          echo "$(wc -c < $OUTPUT_ZIP) bytes → $OUTPUT_ZIP"
+          unzip -l "$OUTPUT_ZIP"
+
+      # ──────────────────────────────────────────────────────────────
+      # 12. Upload artifact
+      # ──────────────────────────────────────────────────────────────
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: npm-offline-windows-node${{ github.event.inputs.node_version }}
-          path: npm-offline-windows-node${{ github.event.inputs.node_version }}.zip
-          retention-days: 30   # Giữ 30 ngày rồi tự xóa
+          name: mtalk_copy_hook-${{ steps.version.outputs.version }}
+          path: mtalk_copy_hook_*.zip
+          retention-days: 30
+
+      # ──────────────────────────────────────────────────────────────
+      # 13. GitHub Release (chỉ khi push tag v*)
+      # ──────────────────────────────────────────────────────────────
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "mTalk Copy Unlocker ${{ steps.version.outputs.version }}"
+          body: |
+            ## mTalk Copy Unlocker ${{ steps.version.outputs.version }}
+
+            Zygisk module bypass copy restriction cho mTalk (com.lgcns.newucap.demo).
+
+            ### Yêu cầu
+            - Root + Magisk 24+ (Zygisk enabled) hoặc KernelSU + ZygiskNext
+            - Android 8.0+ (API 26+)
+
+            ### Cài đặt
+            1. Tải file `.zip` bên dưới
+            2. Magisk App → Modules → Install from storage
+            3. Reboot
+
+            ### Debug
+            ```
+            adb logcat -s mTalkCopyHook
+            ```
+          files: mtalk_copy_hook_*.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
