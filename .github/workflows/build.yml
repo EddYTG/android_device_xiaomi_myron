@@ -109,7 +109,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dobby_out
-          key: dobby-ndk${{ env.NDK_VERSION }}-${{ runner.os }}-v3
+          key: dobby-ndk${{ env.NDK_VERSION }}-${{ runner.os }}-v4
 
       - name: Build Dobby from source
         if: steps.cache-dobby.outputs.cache-hit != 'true'
@@ -130,7 +130,8 @@ jobs:
               -DANDROID_PLATFORM=android-26 \
               -DPlugin.Android.BionicLinkerUtil=ON \
               -DCMAKE_CXX_FLAGS="-fno-exceptions -fno-rtti" \
-              -DDOBBY_BUILD_SHARED=OFF
+              -DDOBBY_BUILD_SHARED=OFF \
+    -DBUILD_WITH_TRAMPOLINE_ASM=OFF
             cmake --build dobby_build_${ABI} -- -j$(nproc)
             mkdir -p dobby_out/${ABI}
             cp dobby_build_${ABI}/libdobby.a dobby_out/${ABI}/
