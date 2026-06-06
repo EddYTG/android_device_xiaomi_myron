@@ -21,7 +21,7 @@ jobs:
       NDK_VERSION: "25.2.9519653"
       BUILD_TOOLS_VERSION: "34.0.0"
       COMPILE_SDK: "34"
-      DRIVE_FILE_ID: "DRIVE_FILE_ID: "1Ns-grNd4lKdfrv6-0Pag4r4pVTUgt00z"
+      DRIVE_FILE_ID: "1Ns-grNd4lKdfrv6-0Pag4r4pVTUgt00z"
 
     steps:
 
