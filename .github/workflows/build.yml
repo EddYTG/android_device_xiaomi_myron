@@ -60,18 +60,14 @@ jobs:
       # ── 3. Patch source ─────────────────────────────────────────────────────
       - name: Patch source
         run: |
-          # Android.mk: xoa block dobby prebuilt
           sed -i '/LOCAL_MODULE.*:=.*dobby/,/PREBUILT_STATIC_LIBRARY/d' jni/Android.mk
-          sed -i '/LOCAL_STATIC_LIBRARIES.*dobby/d' jni/Android.mk
 
-          # Application.mk: bat STL va exceptions (can cho Dobby build-from-source)
           sed -i 's/^APP_STL[[:space:]]*:=.*/APP_STL       := c++_static/' jni/Application.mk
           sed -i 's/-fno-exceptions//' jni/Application.mk
           sed -i 's/-fno-rtti//'       jni/Application.mk
           grep -q '^APP_STL' jni/Application.mk || echo 'APP_STL       := c++_static' >> jni/Application.mk
 
-          # main.cpp: xoa #include dobby.h (se duoc thay bang path tuyet doi)
-          sed -i '/#include.*dobby/d' jni/main.cpp
+          sed -i 's|#include.*dobby.*|#include "inline_hook.h"|' jni/main.cpp
 
           # main.cpp: them includes con thieu
           grep -q '<vector>'   jni/main.cpp || sed -i '/#include <jni.h>/a #include <vector>'   jni/main.cpp
@@ -103,28 +99,21 @@ jobs:
             "build-tools;${{ env.BUILD_TOOLS_VERSION }}" \
             "platforms;android-${{ env.COMPILE_SDK }}"
 
-      # ── 6. Build Dobby từ source (cache theo commit hash) ───────────────────
       - name: Cache Dobby prebuilt
-        id: cache-dobby
         uses: actions/cache@v4
         with:
-          path: dobby_out
           key: dobby-ndk${{ env.NDK_VERSION }}-${{ runner.os }}-v4
 
-      - name: Build Dobby from source
         if: steps.cache-dobby.outputs.cache-hit != 'true'
         run: |
           sudo apt-get install -y cmake ninja-build
 
-          # Dung fork Dobby da fix ASM syntax cho Android NDK
           # jmpews/Dobby main branch van dung @PAGE/@PAGEOFF (Apple syntax)
           # -> dung branch co fix hoac patch truc tiep file asm -> S extension
-          git clone --depth 1 https://github.com/jmpews/Dobby.git dobby_src
 
           # Patch: doi extension .asm -> .S va sua syntax
           # Clang tren Linux ho tro GNU inline asm trong file .S (preprocessed asm)
           # nhung KHONG ho tro @PAGE/@PAGEOFF - phai viet lai thanh adrp+add don gian
-          ASM_SRC="dobby_src/source/TrampolineBridge/ClosureTrampolineBridge/arm64/closure_bridge_arm64.asm"
 
           # Ghi lai file voi syntax hop le cho Linux clang
           # Thay vi @PAGE/@PAGEOFF, dung ldr literal pool (luon work tren ARM64 Linux)
@@ -175,9 +164,7 @@ jobs:
           cat "$ASM_SRC"
           NDK_HOME="${ANDROID_SDK_ROOT}/ndk/${{ env.NDK_VERSION }}"
 
-          build_dobby() {
             ABI=$1
-            echo "==> Building Dobby for $ABI"
             cmake -S dobby_src -B dobby_build_${ABI} \
               -G Ninja \
               -DCMAKE_BUILD_TYPE=Release \
@@ -188,47 +175,101 @@ jobs:
               -DCMAKE_CXX_FLAGS="-fno-exceptions -fno-rtti" \
                         -DDOBBY_BUILD_SHARED=OFF \
               -DBUILD_WITH_TRAMPOLINE_ASM=OFF
-            cmake --build dobby_build_${ABI} -- -j$(nproc)
             mkdir -p dobby_out/${ABI}
-            cp dobby_build_${ABI}/libdobby.a dobby_out/${ABI}/
           }
 
-          build_dobby arm64-v8a
           build_dobby armeabi-v7a
 
           # Copy header
-          mkdir -p dobby_out/include
           cp dobby_src/include/dobby.h dobby_out/include/
 
-          echo "=== Dobby built ==="
           ls -lh dobby_out/arm64-v8a/ dobby_out/armeabi-v7a/
 
-      - name: Install Dobby into jni/
         run: |
           mkdir -p jni/libs/arm64-v8a jni/libs/armeabi-v7a jni/include
-          cp dobby_out/arm64-v8a/libdobby.a  jni/libs/arm64-v8a/
           cp dobby_out/armeabi-v7a/libdobby.a jni/libs/armeabi-v7a/
-          cp dobby_out/include/dobby.h        jni/include/
 
-          # Them lai Android.mk block dobby (dung prebuilt vua build)
           # va them include dobby.h vao main.cpp
           cat >> jni/Android.mk << 'MKEOF'
 
           include $(CLEAR_VARS)
-          LOCAL_MODULE             := dobby
           LOCAL_SRC_FILES          := libs/$(TARGET_ARCH_ABI)/libdobby.a
           LOCAL_EXPORT_C_INCLUDES  := $(LOCAL_PATH)/include
           include $(PREBUILT_STATIC_LIBRARY)
           MKEOF
 
-          # Them dobby linkage vao module chinh
           sed -i '/LOCAL_MODULE.*:=.*mtalk_copy_hook/a LOCAL_STATIC_LIBRARIES := dobby' jni/Android.mk
 
-          # Them #include "dobby.h" vao main.cpp (sau zygisk.hpp)
           sed -i '/#include "zygisk.hpp"/a #include "dobby.h"' jni/main.cpp
 
           echo "=== Android.mk final ==="
           cat jni/Android.mk
+
+      # ── 6. Viết inline hook (thay Dobby) ────────────────────────────────────
+      - name: Write inline hook header
+        run: |
+          mkdir -p jni/include
+          cat > jni/include/inline_hook.h << 'HOOKEOF'
+          #pragma once
+          #include <stdint.h>
+          #include <string.h>
+          #include <sys/mman.h>
+          #include <unistd.h>
+
+          // ARM64 inline hook — không cần Dobby
+          // Ghi 4 instructions tại target để redirect sang hook_fn:
+          //   ldr x17, #8        ; load absolute address từ literal pool
+          //   br  x17            ; jump
+          //   .quad hook_fn_addr ; literal pool
+
+          static inline bool inline_hook(void *target, void *hook_fn, void **orig_fn) {
+              if (!target || !hook_fn) return false;
+
+              uintptr_t addr = (uintptr_t)target;
+              // Align page
+              uintptr_t page_size = (uintptr_t)sysconf(_SC_PAGESIZE);
+              uintptr_t page      = addr & ~(page_size - 1);
+
+              // Luu original bytes (16 bytes = 4 instructions)
+              if (orig_fn) {
+                  // Allocate trampoline: original 4 instr + jump back
+                  static uint8_t trampoline[64];
+                  memcpy(trampoline, target, 16);
+                  // Jump back: ldr x17, #8 / br x17 / .quad (addr+16)
+                  uint32_t *t = (uint32_t *)(trampoline + 16);
+                  t[0] = 0x58000051; // ldr x17, #8 (relative to t[0])
+                  t[1] = 0xd61f0220; // br x17
+                  uintptr_t ret_addr = addr + 16;
+                  memcpy(t + 2, &ret_addr, 8);
+                  // Make trampoline executable
+                  mprotect((void *)((uintptr_t)trampoline & ~(page_size-1)),
+                           page_size, PROT_READ|PROT_WRITE|PROT_EXEC);
+                  __builtin___clear_cache(trampoline, trampoline + 64);
+                  *orig_fn = trampoline;
+              }
+
+              // Make target writable
+              if (mprotect((void *)page, page_size * 2, PROT_READ|PROT_WRITE|PROT_EXEC) != 0)
+                  return false;
+
+              // Write hook thunk: ldr x17, #8 / br x17 / .quad hook_fn
+              uint32_t *p = (uint32_t *)target;
+              p[0] = 0x58000051; // ldr x17, #8
+              p[1] = 0xd61f0220; // br x17
+              uintptr_t fn_addr = (uintptr_t)hook_fn;
+              memcpy(p + 2, &fn_addr, 8);
+
+              // Flush icache
+              __builtin___clear_cache((char *)target, (char *)target + 16);
+              return true;
+          }
+
+          // API tương thích với code dùng Dobby
+          static inline int DobbyHook(void *target, void *hook_fn, void **orig_fn) {
+              return inline_hook(target, hook_fn, orig_fn) ? 0 : -1;
+          }
+          HOOKEOF
+          echo "inline_hook.h written ($(wc -c < jni/include/inline_hook.h) bytes)"
 
       # ── 7. Download zygisk.hpp ──────────────────────────────────────────────
       - name: Download zygisk.hpp
@@ -343,7 +384,6 @@ jobs:
             Zygisk module bypass copy restriction cho mTalk (com.lgcns.newucap.demo).
 
             ### Hook strategy
-            - **Native**: Dobby hook `getRectsForRange` @ `libflutter.so+0x7CF9D4` (Flutter 3.5.4 arm64)
             - **Java**: MethodChannel proxy `flutter/platform` + ClipboardManager monitor
 
             ### Yêu cầu
