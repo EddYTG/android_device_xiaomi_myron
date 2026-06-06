@@ -22,7 +22,7 @@ jobs:
       NDK_VERSION: "25.2.9519653"
       BUILD_TOOLS_VERSION: "34.0.0"
       COMPILE_SDK: "34"
-      JAVA_VERSION: "11"
+      JAVA_VERSION: "17"
       DRIVE_FILE_ID: "1bAz4vrDJbkSSNVBUgae36Zd8HULQlDX7"
 
     steps:
@@ -169,7 +169,7 @@ jobs:
           CLASSES_OUT="build/classes"
           mkdir -p "$CLASSES_OUT"
 
-          javac -source 8 -target 8 \
+          javac -source 11 -target 11 \
             -cp "$ANDROID_JAR" \
             -d "$CLASSES_OUT" \
             src/main/java/com/mtalk/copyhook/CopyHookEntry.java
