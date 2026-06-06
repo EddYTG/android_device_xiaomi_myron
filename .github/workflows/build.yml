@@ -130,8 +130,8 @@ jobs:
               -DANDROID_PLATFORM=android-26 \
               -DPlugin.Android.BionicLinkerUtil=ON \
               -DCMAKE_CXX_FLAGS="-fno-exceptions -fno-rtti" \
-              -DDOBBY_BUILD_SHARED=OFF \
-    -DBUILD_WITH_TRAMPOLINE_ASM=OFF
+                        -DDOBBY_BUILD_SHARED=OFF \
+              -DBUILD_WITH_TRAMPOLINE_ASM=OFF
             cmake --build dobby_build_${ABI} -- -j$(nproc)
             mkdir -p dobby_out/${ABI}
             cp dobby_build_${ABI}/libdobby.a dobby_out/${ABI}/
@@ -307,3 +307,4 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
