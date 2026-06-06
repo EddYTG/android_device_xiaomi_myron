@@ -26,19 +26,14 @@ jobs:
       DRIVE_FILE_ID: "1bAz4vrDJbkSSNVBUgae36Zd8HULQlDX7"
 
     steps:
-      # ──────────────────────────────────────────────────────────────
-      # 1. Download source ZIP từ Google Drive
-      # ──────────────────────────────────────────────────────────────
+
       - name: Download source from Google Drive
         run: |
           FILE_ID="${{ env.DRIVE_FILE_ID }}"
-
           curl -fsSc /tmp/cookies.txt \
             "https://drive.google.com/uc?export=download&id=${FILE_ID}" \
             -o /tmp/check.html
-
           CONFIRM=$(grep -oP 'confirm=\K[^&"]+' /tmp/check.html | head -1)
-
           if [ -n "$CONFIRM" ]; then
             curl -fsSL -b /tmp/cookies.txt \
               "https://drive.google.com/uc?export=download&confirm=${CONFIRM}&id=${FILE_ID}" \
@@ -48,113 +43,71 @@ jobs:
               "https://drive.google.com/uc?export=download&id=${FILE_ID}" \
               -o source.zip
           fi
-
           echo "Downloaded: $(wc -c < source.zip) bytes"
           unzip -l source.zip | head -30
 
-      # ──────────────────────────────────────────────────────────────
-      # 2. Extract source
-      # ──────────────────────────────────────────────────────────────
       - name: Extract source
         run: |
           unzip -q source.zip
-
           ROOT=$(unzip -l source.zip | awk 'NR==4{print $4}' | cut -d/ -f1)
-          echo "Detected root dir: $ROOT"
-
+          echo "Detected root: $ROOT"
           if [ -d "$ROOT" ] && [ "$ROOT" != "." ] && [ -n "$ROOT" ]; then
             shopt -s dotglob
             mv "$ROOT"/* .
             rmdir "$ROOT" 2>/dev/null || true
           fi
-
           echo "Source tree:"
           find . -not -path './.git/*' -not -name 'source.zip' | sort | head -40
 
-      # ──────────────────────────────────────────────────────────────
-      # 3. Patch source — bỏ Dobby (không có prebuilt)
-      # ──────────────────────────────────────────────────────────────
-      - name: Patch source — remove Dobby dependency
+      - name: Patch source
         run: |
-        run: |
-          echo "==> Patching jni/Android.mk"
-          # Xóa toàn bộ block PREBUILT_STATIC_LIBRARY của dobby
+          echo "--- Patch Android.mk: remove Dobby ---"
           python3 - << 'PYEOF'
-          import re, sys
-
+          import re
           with open("jni/Android.mk") as f:
               content = f.read()
-
-          original = content
-
-          # Xóa block include dobby prebuilt (từ include $(CLEAR_VARS) đến include $(PREBUILT_STATIC_LIBRARY))
           content = re.sub(
-              r'include \$\(CLEAR_VARS\)\s*\n'
-              r'LOCAL_MODULE\s*:=\s*dobby.*?'
-              r'include \$\(PREBUILT_STATIC_LIBRARY\)\s*\n?',
-              '',
-              content,
-              flags=re.DOTALL
-          )
-
-          # Xóa LOCAL_STATIC_LIBRARIES := dobby
-          content = re.sub(r'\s*LOCAL_STATIC_LIBRARIES\s*:=\s*dobby\s*\n', '\n', content)
-
+              r'include \$\(CLEAR_VARS\)\s*\nLOCAL_MODULE\s*:=\s*dobby.*?include \$\(PREBUILT_STATIC_LIBRARY\)\s*\n?',
+              '', content, flags=re.DOTALL)
+          content = re.sub(r'[ \t]*LOCAL_STATIC_LIBRARIES\s*:=\s*dobby[ \t]*\n', '', content)
           with open("jni/Android.mk", "w") as f:
               f.write(content)
-
-          changed = content != original
-          print("Android.mk patched:", changed)
-          if not changed:
-              print("WARNING: no changes made — check regex vs file content")
+          print("Android.mk done")
           PYEOF
 
-          echo "==> Patching jni/main.cpp"
-          # Xóa #include "dobby.h"
+          echo "--- Patch main.cpp: remove dobby.h ---"
           sed -i '/#include[[:space:]]*"dobby\.h"/d' jni/main.cpp
 
-          echo "==> Result Android.mk:"
-          cat jni/Android.mk
-
-          echo ""
-          echo "==> Patching jni/Application.mk — fix STL"
-          # APP_STL=none không có <string>, đổi sang c++_static
-          sed -i 's/^APP_STL\s*:=.*/APP_STL := c++_static/' jni/Application.mk
-          # Nếu không có dòng APP_STL thì thêm vào
+          echo "--- Patch Application.mk: fix STL ---"
+          sed -i 's/^APP_STL[[:space:]]*:=.*/APP_STL := c++_static/' jni/Application.mk
           grep -q "^APP_STL" jni/Application.mk || echo "APP_STL := c++_static" >> jni/Application.mk
+
+          echo "--- Verify ---"
+          echo "Android.mk:"
+          cat jni/Android.mk
+          echo ""
           echo "Application.mk:"
           cat jni/Application.mk
-
           echo ""
-          echo "==> Dobby references remaining (should be 0):"
-          grep -n -i dobby jni/Android.mk jni/main.cpp || echo "  none"
+          echo "Dobby refs remaining:"
+          grep -rn -i dobby jni/ || echo "  none"
 
-      # ──────────────────────────────────────────────────────────────
-      # 4. Java
-      # ──────────────────────────────────────────────────────────────
       - name: Set up Java ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
 
-      # ──────────────────────────────────────────────────────────────
-      # 5. Android SDK — NDK + build-tools
-      # ──────────────────────────────────────────────────────────────
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Install NDK and build-tools
-        run: |
         run: |
           sdkmanager --install \
             "ndk;${{ env.NDK_VERSION }}" \
             "build-tools;${{ env.BUILD_TOOLS_VERSION }}" \
             "platforms;android-${{ env.COMPILE_SDK }}"
 
-      # ──────────────────────────────────────────────────────────────
-      # 6. Cache NDK intermediates
-      # ──────────────────────────────────────────────────────────────
       - name: Cache NDK build output
         uses: actions/cache@v4
         with:
@@ -162,26 +115,17 @@ jobs:
           key: ndk-libs-${{ runner.os }}-${{ hashFiles('jni/**') }}
           restore-keys: ndk-libs-${{ runner.os }}-
 
-      # ──────────────────────────────────────────────────────────────
-      # 7. Download zygisk.hpp
-      # ──────────────────────────────────────────────────────────────
       - name: Download zygisk.hpp
-        run: |
         run: |
           curl -fsSL \
             "https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp" \
             -o jni/zygisk.hpp
           echo "zygisk.hpp: $(wc -c < jni/zygisk.hpp) bytes"
 
-      # ──────────────────────────────────────────────────────────────
-      # 8. Build native .so
-      # ──────────────────────────────────────────────────────────────
       - name: Build native Zygisk module
-        run: |
         run: |
           NDK_HOME="${ANDROID_SDK_ROOT}/ndk/${{ env.NDK_VERSION }}"
           echo "NDK: $NDK_HOME"
-
           $NDK_HOME/ndk-build \
             NDK_PROJECT_PATH=. \
             NDK_APPLICATION_MK=jni/Application.mk \
@@ -189,40 +133,28 @@ jobs:
             APP_ABI="arm64-v8a armeabi-v7a" \
             APP_OPTIM=release \
             -j$(nproc)
-
           echo "Built:"
           find libs -name "*.so" -exec ls -lh {} \;
 
-      # ──────────────────────────────────────────────────────────────
-      # 9. Compile Java → DEX
-      # ──────────────────────────────────────────────────────────────
       - name: Compile Java payload to DEX
-        run: |
         run: |
           ANDROID_JAR="${ANDROID_SDK_ROOT}/platforms/android-${{ env.COMPILE_SDK }}/android.jar"
           BUILD_TOOLS="${ANDROID_SDK_ROOT}/build-tools/${{ env.BUILD_TOOLS_VERSION }}"
           CLASSES_OUT="build/classes"
           mkdir -p "$CLASSES_OUT"
-
           javac -source 11 -target 11 \
             -cp "$ANDROID_JAR" \
             -d "$CLASSES_OUT" \
             src/main/java/com/mtalk/copyhook/CopyHookEntry.java
-
           "$BUILD_TOOLS/d8" \
             --lib "$ANDROID_JAR" \
             --output build/ \
             $(find "$CLASSES_OUT" -name "*.class")
-
           mv build/classes.dex build/hook.dex
           echo "hook.dex: $(wc -c < build/hook.dex) bytes"
 
-      # ──────────────────────────────────────────────────────────────
-      # 10. Resolve version
-      # ──────────────────────────────────────────────────────────────
       - name: Resolve version
         id: version
-        run: |
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/}"
@@ -232,20 +164,15 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Version: $VERSION"
 
-      # ──────────────────────────────────────────────────────────────
-      # 11. Package Magisk module ZIP
-      # ──────────────────────────────────────────────────────────────
       - name: Package Magisk module ZIP
-        run: |
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           OUT="staging"
           mkdir -p "$OUT/zygisk" "$OUT/META-INF/com/google/android"
 
           sed "s/^version=.*/version=${VERSION}/" module.prop > "$OUT/module.prop"
-
-          cp libs/arm64-v8a/libmtalk_copy_hook.so   "$OUT/zygisk/arm64-v8a.so"
-          cp libs/armeabi-v7a/libmtalk_copy_hook.so  "$OUT/zygisk/armeabi-v7a.so"
+          cp libs/arm64-v8a/libmtalk_copy_hook.so  "$OUT/zygisk/arm64-v8a.so"
+          cp libs/armeabi-v7a/libmtalk_copy_hook.so "$OUT/zygisk/armeabi-v7a.so"
           cp build/hook.dex "$OUT/hook.dex"
 
           cat > "$OUT/customize.sh" << CEOF
@@ -271,14 +198,9 @@ jobs:
 
           OUTPUT_ZIP="mtalk_copy_hook_${VERSION}.zip"
           cd "$OUT" && zip -r9 "../${OUTPUT_ZIP}" . && cd ..
-
-          echo "output_zip=${OUTPUT_ZIP}" >> "$GITHUB_ENV"
           echo "$(wc -c < $OUTPUT_ZIP) bytes → $OUTPUT_ZIP"
           unzip -l "$OUTPUT_ZIP"
 
-      # ──────────────────────────────────────────────────────────────
-      # 12. Upload artifact
-      # ──────────────────────────────────────────────────────────────
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -286,9 +208,6 @@ jobs:
           path: mtalk_copy_hook_*.zip
           retention-days: 30
 
-      # ──────────────────────────────────────────────────────────────
-      # 13. GitHub Release (chỉ khi push tag v*)
-      # ──────────────────────────────────────────────────────────────
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
