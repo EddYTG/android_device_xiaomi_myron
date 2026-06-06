@@ -75,22 +75,57 @@ jobs:
           print("Android.mk done")
           PYEOF
 
-          echo "--- Patch main.cpp: remove dobby.h ---"
-          sed -i '/#include[[:space:]]*"dobby\.h"/d' jni/main.cpp
-
           echo "--- Patch Application.mk: fix STL ---"
           sed -i 's/^APP_STL[[:space:]]*:=.*/APP_STL := c++_static/' jni/Application.mk
           grep -q "^APP_STL" jni/Application.mk || echo "APP_STL := c++_static" >> jni/Application.mk
 
+          echo "--- Patch main.cpp ---"
+          python3 - << 'PYEOF2'
+          import re
+
+          with open("jni/main.cpp") as f:
+              src = f.read()
+
+          # 1. Xoa dobby.h
+          src = re.sub(r'#include\s*"dobby\.h"\s*\n', '', src)
+
+          # 2. Them includes con thieu neu chua co
+          needed = {
+              '<vector>':   '#include <vector>',
+              '<unistd.h>': '#include <unistd.h>',
+              '<cstdio>':   '#include <cstdio>',
+              '<cstdint>':  '#include <cstdint>',
+          }
+          for header, line in needed.items():
+              if header not in src:
+                  # Chen sau dong #include <jni.h>
+                  src = src.replace('#include <jni.h>', '#include <jni.h>\n' + line, 1)
+
+          # 3. Fix zygisk API: CopyUnlocker phai ke thua zygisk::ModuleBase
+          # zygisk.hpp moi yeu cau class ke thua ModuleBase (co vtable)
+          # Doi "public zygisk::ModuleBase" neu chua co
+          if 'public zygisk::ModuleBase' not in src:
+              src = re.sub(
+                  r'class\s+CopyUnlocker\s*:\s*public\s+zygisk::\w+',
+                  'class CopyUnlocker : public zygisk::ModuleBase',
+                  src
+              )
+
+          with open("jni/main.cpp", "w") as f:
+              f.write(src)
+
+          print("main.cpp patched")
+          PYEOF2
+
           echo "--- Verify ---"
-          echo "Android.mk:"
-          cat jni/Android.mk
-          echo ""
           echo "Application.mk:"
           cat jni/Application.mk
           echo ""
           echo "Dobby refs remaining:"
           grep -rn -i dobby jni/ || echo "  none"
+          echo ""
+          echo "main.cpp includes:"
+          grep "^#include" jni/main.cpp
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
