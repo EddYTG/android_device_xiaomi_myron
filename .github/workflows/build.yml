@@ -33,7 +33,6 @@ jobs:
         run: |
           FILE_ID="${{ env.DRIVE_FILE_ID }}"
 
-          # Drive large-file: lần 1 lấy confirm token, lần 2 download thật
           curl -fsSc /tmp/cookies.txt \
             "https://drive.google.com/uc?export=download&id=${FILE_ID}" \
             -o /tmp/check.html
@@ -41,12 +40,10 @@ jobs:
           CONFIRM=$(grep -oP 'confirm=\K[^&"]+' /tmp/check.html | head -1)
 
           if [ -n "$CONFIRM" ]; then
-            echo "Using confirm token: $CONFIRM"
             curl -fsSL -b /tmp/cookies.txt \
               "https://drive.google.com/uc?export=download&confirm=${CONFIRM}&id=${FILE_ID}" \
               -o source.zip
           else
-            # File nhỏ — không cần confirm
             curl -fsSL \
               "https://drive.google.com/uc?export=download&id=${FILE_ID}" \
               -o source.zip
@@ -62,12 +59,10 @@ jobs:
         run: |
           unzip -q source.zip
 
-          # Tự detect root dir trong zip (có thể là zygisk_mtalk/ hoặc thẳng)
           ROOT=$(unzip -l source.zip | awk 'NR==4{print $4}' | cut -d/ -f1)
           echo "Detected root dir: $ROOT"
 
-          if [ -d "$ROOT" ] && [ "$ROOT" != "." ]; then
-            # Move contents lên 1 cấp
+          if [ -d "$ROOT" ] && [ "$ROOT" != "." ] && [ -n "$ROOT" ]; then
             shopt -s dotglob
             mv "$ROOT"/* .
             rmdir "$ROOT" 2>/dev/null || true
@@ -77,7 +72,55 @@ jobs:
           find . -not -path './.git/*' -not -name 'source.zip' | sort | head -40
 
       # ──────────────────────────────────────────────────────────────
-      # 3. Java
+      # 3. Patch source — bỏ Dobby (không có prebuilt)
+      # ──────────────────────────────────────────────────────────────
+      - name: Patch source — remove Dobby dependency
+        run: |
+          echo "==> Patching jni/Android.mk"
+          # Xóa toàn bộ block PREBUILT_STATIC_LIBRARY của dobby
+          python3 - << 'PYEOF'
+          import re, sys
+
+          with open("jni/Android.mk") as f:
+              content = f.read()
+
+          original = content
+
+          # Xóa block include dobby prebuilt (từ include $(CLEAR_VARS) đến include $(PREBUILT_STATIC_LIBRARY))
+          content = re.sub(
+              r'include \$\(CLEAR_VARS\)\s*\n'
+              r'LOCAL_MODULE\s*:=\s*dobby.*?'
+              r'include \$\(PREBUILT_STATIC_LIBRARY\)\s*\n?',
+              '',
+              content,
+              flags=re.DOTALL
+          )
+
+          # Xóa LOCAL_STATIC_LIBRARIES := dobby
+          content = re.sub(r'\s*LOCAL_STATIC_LIBRARIES\s*:=\s*dobby\s*\n', '\n', content)
+
+          with open("jni/Android.mk", "w") as f:
+              f.write(content)
+
+          changed = content != original
+          print("Android.mk patched:", changed)
+          if not changed:
+              print("WARNING: no changes made — check regex vs file content")
+          PYEOF
+
+          echo "==> Patching jni/main.cpp"
+          # Xóa #include "dobby.h"
+          sed -i '/#include[[:space:]]*"dobby\.h"/d' jni/main.cpp
+
+          echo "==> Result Android.mk:"
+          cat jni/Android.mk
+
+          echo ""
+          echo "==> Dobby references remaining (should be 0):"
+          grep -n -i dobby jni/Android.mk jni/main.cpp || echo "  none"
+
+      # ──────────────────────────────────────────────────────────────
+      # 4. Java
       # ──────────────────────────────────────────────────────────────
       - name: Set up Java ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
@@ -86,7 +129,7 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
 
       # ──────────────────────────────────────────────────────────────
-      # 4. Android SDK — NDK + build-tools
+      # 5. Android SDK — NDK + build-tools
       # ──────────────────────────────────────────────────────────────
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
@@ -99,7 +142,7 @@ jobs:
             "platforms;android-${{ env.COMPILE_SDK }}"
 
       # ──────────────────────────────────────────────────────────────
-      # 5. Cache NDK intermediates
+      # 6. Cache NDK intermediates
       # ──────────────────────────────────────────────────────────────
       - name: Cache NDK build output
         uses: actions/cache@v4
@@ -109,38 +152,14 @@ jobs:
           restore-keys: ndk-libs-${{ runner.os }}-
 
       # ──────────────────────────────────────────────────────────────
-      # 6. Download zygisk.hpp
+      # 7. Download zygisk.hpp
       # ──────────────────────────────────────────────────────────────
       - name: Download zygisk.hpp
         run: |
-          if [ ! -f jni/zygisk.hpp ]; then
-            curl -fsSL \
-              "https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp" \
-              -o jni/zygisk.hpp
-          fi
+          curl -fsSL \
+            "https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp" \
+            -o jni/zygisk.hpp
           echo "zygisk.hpp: $(wc -c < jni/zygisk.hpp) bytes"
-
-      # ──────────────────────────────────────────────────────────────
-      # 7. Download Dobby prebuilt
-      # ──────────────────────────────────────────────────────────────
-      - name: Download Dobby prebuilt
-        run: |
-          mkdir -p jni/include jni/libs/arm64-v8a jni/libs/armeabi-v7a
-
-          DOBBY_BASE="https://github.com/jmpews/Dobby/releases/download/v1.0.0"
-
-          if [ ! -f jni/libs/arm64-v8a/libdobby.a ]; then
-            curl -fsSL "${DOBBY_BASE}/arm64-v8a.zip" -o /tmp/dobby_arm64.zip
-            unzip -qjo /tmp/dobby_arm64.zip "*.a" -d jni/libs/arm64-v8a/
-            unzip -qjo /tmp/dobby_arm64.zip "*.h" -d jni/include/ 2>/dev/null || true
-          fi
-
-          if [ ! -f jni/libs/armeabi-v7a/libdobby.a ]; then
-            curl -fsSL "${DOBBY_BASE}/armeabi-v7a.zip" -o /tmp/dobby_arm32.zip
-            unzip -qjo /tmp/dobby_arm32.zip "*.a" -d jni/libs/armeabi-v7a/
-          fi
-
-          ls -lh jni/libs/arm64-v8a/ jni/libs/armeabi-v7a/
 
       # ──────────────────────────────────────────────────────────────
       # 8. Build native .so
@@ -148,6 +167,7 @@ jobs:
       - name: Build native Zygisk module
         run: |
           NDK_HOME="${ANDROID_SDK_ROOT}/ndk/${{ env.NDK_VERSION }}"
+          echo "NDK: $NDK_HOME"
 
           $NDK_HOME/ndk-build \
             NDK_PROJECT_PATH=. \
@@ -157,6 +177,7 @@ jobs:
             APP_OPTIM=release \
             -j$(nproc)
 
+          echo "Built:"
           find libs -name "*.so" -exec ls -lh {} \;
 
       # ──────────────────────────────────────────────────────────────
