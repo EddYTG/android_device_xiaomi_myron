@@ -57,30 +57,19 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle wrapper
+      - name: Setup Gradle wrapper and patch build files
         run: |
+          # Patch namespace truoc khi Gradle chay
+          grep -q 'namespace' app/build.gradle ||             sed -i 's/android {/android {\n    namespace "com.mtalk.reader"/' app/build.gradle
+          echo "=== app/build.gradle ===" && cat app/build.gradle
+
+          # Tao gradlew neu chua co
           if [ ! -f gradlew ]; then
             curl -fsSL "https://services.gradle.org/distributions/gradle-8.4-bin.zip" -o /tmp/gradle.zip
             unzip -q /tmp/gradle.zip -d /tmp/gradle
             /tmp/gradle/gradle-8.4/bin/gradle wrapper --gradle-version 8.4
           fi
           chmod +x gradlew
-
-      - name: Patch build.gradle — add namespace
-        run: |
-          python3 - << 'PYEOF'
-          content = open('app/build.gradle').read()
-          if 'namespace' not in content:
-              content = content.replace(
-                  'android {',
-                  'android {\n    namespace "com.mtalk.reader"'
-              )
-              open('app/build.gradle', 'w').write(content)
-              print("namespace added")
-          else:
-              print("namespace already present")
-          print(open('app/build.gradle').read())
-          PYEOF
 
       - name: Build APK
         run: |
