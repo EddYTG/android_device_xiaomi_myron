@@ -59,6 +59,9 @@ jobs:
           grep -q '<vector>'    jni/main.cpp || sed -i '/#include <jni.h>/a #include <vector>'    jni/main.cpp
           grep -q '<unistd.h>'  jni/main.cpp || sed -i '/#include <jni.h>/a #include <unistd.h>'  jni/main.cpp
           grep -q '<pthread.h>' jni/main.cpp || sed -i '/#include <jni.h>/a #include <pthread.h>' jni/main.cpp
+          # Them LOCAL_C_INCLUDES vao Android.mk de tim duoc inline_hook.h
+          sed -i '/^LOCAL_LDLIBS/i LOCAL_C_INCLUDES := $(LOCAL_PATH)/include' jni/Android.mk
+          sed -i '/^LOCAL_LDLIBS/i LOCAL_C_INCLUDES := $(LOCAL_PATH)/include' jni/Android.mk
           cat jni/Android.mk && cat jni/Application.mk && grep '^#include' jni/main.cpp
 
       - name: Write inline_hook.h
