@@ -62,9 +62,9 @@ jobs:
           # Them LOCAL_C_INCLUDES vao Android.mk de tim duoc inline_hook.h
           sed -i '/^LOCAL_LDLIBS/i LOCAL_C_INCLUDES := $(LOCAL_PATH)/include' jni/Android.mk
           sed -i '/^LOCAL_LDLIBS/i LOCAL_C_INCLUDES := $(LOCAL_PATH)/include' jni/Android.mk
-          # Fix sscanf format: %lx -> %"SCNxPTR" cho ca arm32 va arm64
-          sed -i 's/sscanf(line, "%lx-"/sscanf(line, "%"SCNxPTR"-"/g' jni/main.cpp
-          grep -q "<inttypes.h>" jni/main.cpp || sed -i '/#include <jni.h>/a #include <inttypes.h>' jni/main.cpp
+          # Fix sscanf: cast base sang uintptr_t sau khi doc vao unsigned long
+          sed -i 's/uintptr_t base = 0;/unsigned long _base = 0; uintptr_t base = 0;/g' jni/main.cpp
+          sed -i 's/sscanf(line, "%lx-", \&base)/sscanf(line, "%lx-", \&_base); base = (uintptr_t)_base/g' jni/main.cpp
           cat jni/Android.mk && cat jni/Application.mk && grep '^#include' jni/main.cpp
 
       - name: Write inline_hook.h
