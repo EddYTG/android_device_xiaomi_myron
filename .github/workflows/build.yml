@@ -21,19 +21,25 @@ jobs:
       NDK_VERSION: "25.2.9519653"
       BUILD_TOOLS_VERSION: "34.0.0"
       COMPILE_SDK: "34"
-      DRIVE_FILE_ID: "1Ns-grNd4lKdfrv6-0Pag4r4pVTUgt00z"
+      DRIVE_FILE_ID: "1lfhMTBrCgcdmEGAsDSAc9KOzEVMB-mN3"
 
     steps:
 
       - name: Download source from Google Drive
         run: |
           FILE_ID="${{ env.DRIVE_FILE_ID }}"
-          curl -fsSc /tmp/gc.txt "https://drive.google.com/uc?export=download&id=${FILE_ID}" -o /tmp/check.html
+          curl -fsSc /tmp/gc.txt \
+            "https://drive.google.com/uc?export=download&id=${FILE_ID}" \
+            -o /tmp/check.html
           CONFIRM=$(grep -oP 'confirm=\K[^&"]+' /tmp/check.html | head -1)
           if [ -n "$CONFIRM" ]; then
-            curl -fsSL -b /tmp/gc.txt "https://drive.google.com/uc?export=download&confirm=${CONFIRM}&id=${FILE_ID}" -o source.zip
+            curl -fsSL -b /tmp/gc.txt \
+              "https://drive.google.com/uc?export=download&confirm=${CONFIRM}&id=${FILE_ID}" \
+              -o source.zip
           else
-            curl -fsSL "https://drive.google.com/uc?export=download&id=${FILE_ID}" -o source.zip
+            curl -fsSL \
+              "https://drive.google.com/uc?export=download&id=${FILE_ID}" \
+              -o source.zip
           fi
           echo "Downloaded: $(wc -c < source.zip) bytes"
           unzip -l source.zip | head -20
@@ -45,33 +51,19 @@ jobs:
           if [ -d "$ROOT" ] && [ "$ROOT" != "." ] && [ -n "$ROOT" ]; then
             shopt -s dotglob && mv "$ROOT"/* . && rmdir "$ROOT" 2>/dev/null || true
           fi
+          echo "=== Tree ==="
           find . -not -path './.git/*' -not -name 'source.zip' | sort | head -30
 
-      - name: Patch source
+      - name: Patch Android.mk — remove Dobby
         run: |
+          # v2 main.cpp khong dung Dobby nhung Android.mk van con block cu
           sed -i '/LOCAL_MODULE.*:=.*dobby/,/PREBUILT_STATIC_LIBRARY/d' jni/Android.mk
           sed -i '/LOCAL_STATIC_LIBRARIES.*dobby/d' jni/Android.mk
+          # Fix STL: main.cpp dung std::string nen can c++_static
           sed -i 's/^APP_STL[[:space:]]*:=.*/APP_STL := c++_static/' jni/Application.mk
-          sed -i 's/-fno-exceptions//' jni/Application.mk
-          sed -i 's/-fno-rtti//' jni/Application.mk
           grep -q '^APP_STL' jni/Application.mk || echo 'APP_STL := c++_static' >> jni/Application.mk
-          sed -i 's|#include.*dobby.*|#include "inline_hook.h"|' jni/main.cpp
-          grep -q '<vector>'    jni/main.cpp || sed -i '/#include <jni.h>/a #include <vector>'    jni/main.cpp
-          grep -q '<unistd.h>'  jni/main.cpp || sed -i '/#include <jni.h>/a #include <unistd.h>'  jni/main.cpp
-          grep -q '<pthread.h>' jni/main.cpp || sed -i '/#include <jni.h>/a #include <pthread.h>' jni/main.cpp
-          # Them LOCAL_C_INCLUDES vao Android.mk de tim duoc inline_hook.h
-          sed -i '/^LOCAL_LDLIBS/i LOCAL_C_INCLUDES := $(LOCAL_PATH)/include' jni/Android.mk
-          sed -i '/^LOCAL_LDLIBS/i LOCAL_C_INCLUDES := $(LOCAL_PATH)/include' jni/Android.mk
-          # Fix sscanf: cast base sang uintptr_t sau khi doc vao unsigned long
-          sed -i 's/uintptr_t base = 0;/unsigned long _base = 0; uintptr_t base = 0;/g' jni/main.cpp
-          sed -i 's/sscanf(line, "%lx-", \&base)/sscanf(line, "%lx-", \&_base); base = (uintptr_t)_base/g' jni/main.cpp
-          cat jni/Android.mk && cat jni/Application.mk && grep '^#include' jni/main.cpp
-
-      - name: Write inline_hook.h
-        run: |
-          mkdir -p jni/include
-          echo "I3ByYWdtYSBvbmNlCiNpbmNsdWRlIDxzdGRpbnQuaD4KI2luY2x1ZGUgPHN0cmluZy5oPgojaW5jbHVkZSA8c3lzL21tYW4uaD4KI2luY2x1ZGUgPHVuaXN0ZC5oPgoKc3RhdGljIHVpbnQ4X3QgX3RyYW1wWzY0XSBfX2F0dHJpYnV0ZV9fKChhbGlnbmVkKDY0KSkpOwoKc3RhdGljIGlubGluZSBib29sIGlubGluZV9ob29rKHZvaWQgKnRhcmdldCwgdm9pZCAqaG9va19mbiwgdm9pZCAqKm9yaWdfZm4pIHsKICAgIGlmICghdGFyZ2V0IHx8ICFob29rX2ZuKSByZXR1cm4gZmFsc2U7CiAgICB1aW50cHRyX3QgcHMgICA9ICh1aW50cHRyX3Qpc3lzY29uZihfU0NfUEFHRVNJWkUpOwogICAgdWludHB0cl90IGFkZHIgPSAodWludHB0cl90KXRhcmdldDsKICAgIHVpbnRwdHJfdCBwYWdlID0gYWRkciAmIH4ocHMgLSAxKTsKCiAgICBpZiAob3JpZ19mbikgewogICAgICAgIG1lbWNweShfdHJhbXAsIHRhcmdldCwgMTYpOwogICAgICAgIHVpbnQzMl90ICp0ID0gKHVpbnQzMl90ICopKF90cmFtcCArIDE2KTsKICAgICAgICB0WzBdID0gMHg1ODAwMDA1MXU7CiAgICAgICAgdFsxXSA9IDB4ZDYxZjAyMjB1OwogICAgICAgIHVpbnRwdHJfdCBiYWNrID0gYWRkciArIDE2OwogICAgICAgIG1lbWNweSh0ICsgMiwgJmJhY2ssIDgpOwogICAgICAgIC8vIFdeWDogUlcgZGFodWx1LCBmbHVzaCwgbGFsdSBSWAogICAgICAgIHVpbnRwdHJfdCB0cCA9ICh1aW50cHRyX3QpX3RyYW1wICYgfihwcyAtIDEpOwogICAgICAgIG1wcm90ZWN0KCh2b2lkICopdHAsIHBzLCBQUk9UX1JFQUQgfCBQUk9UX1dSSVRFKTsKICAgICAgICBfX2J1aWx0aW5fX19jbGVhcl9jYWNoZSgoY2hhciAqKV90cmFtcCwgKGNoYXIgKilfdHJhbXAgKyA2NCk7CiAgICAgICAgbXByb3RlY3QoKHZvaWQgKil0cCwgcHMsIFBST1RfUkVBRCB8IFBST1RfRVhFQyk7CiAgICAgICAgKm9yaWdfZm4gPSBfdHJhbXA7CiAgICB9CgogICAgLy8gU3RlcCAxOiBSVyDEkeG7gyBnaGkgcGF0Y2gKICAgIGlmIChtcHJvdGVjdCgodm9pZCAqKXBhZ2UsIHBzICogMiwgUFJPVF9SRUFEIHwgUFJPVF9XUklURSkgIT0gMCkKICAgICAgICByZXR1cm4gZmFsc2U7CgogICAgdWludDMyX3QgKnAgPSAodWludDMyX3QgKil0YXJnZXQ7CiAgICBwWzBdID0gMHg1ODAwMDA1MXU7ICAvLyBsZHIgeDE3LCAjOAogICAgcFsxXSA9IDB4ZDYxZjAyMjB1OyAgLy8gYnIgeDE3CiAgICB1aW50cHRyX3QgZm4gPSAodWludHB0cl90KWhvb2tfZm47CiAgICBtZW1jcHkocCArIDIsICZmbiwgOCk7CgogICAgLy8gU3RlcCAyOiBmbHVzaCBpY2FjaGUgcuG7k2kgxJHhurd0IGzhuqFpIFJYCiAgICBfX2J1aWx0aW5fX19jbGVhcl9jYWNoZSgoY2hhciAqKXRhcmdldCwgKGNoYXIgKil0YXJnZXQgKyAxNik7CiAgICBtcHJvdGVjdCgodm9pZCAqKXBhZ2UsIHBzICogMiwgUFJPVF9SRUFEIHwgUFJPVF9FWEVDKTsKCiAgICByZXR1cm4gdHJ1ZTsKfQoKc3RhdGljIGlubGluZSBpbnQgRG9iYnlIb29rKHZvaWQgKnRhcmdldCwgdm9pZCAqaG9va19mbiwgdm9pZCAqKm9yaWdfZm4pIHsKICAgIHJldHVybiBpbmxpbmVfaG9vayh0YXJnZXQsIGhvb2tfZm4sIG9yaWdfZm4pID8gMCA6IC0xOwp9Cg==" | base64 -d > jni/include/inline_hook.h
-          echo "inline_hook.h: $(wc -c < jni/include/inline_hook.h) bytes"
+          echo "=== Android.mk ===" && cat jni/Android.mk
+          echo "=== Application.mk ===" && cat jni/Application.mk
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -113,9 +105,14 @@ jobs:
           ANDROID_JAR="${ANDROID_SDK_ROOT}/platforms/android-${{ env.COMPILE_SDK }}/android.jar"
           BT="${ANDROID_SDK_ROOT}/build-tools/${{ env.BUILD_TOOLS_VERSION }}"
           mkdir -p build/classes
-          javac -source 11 -target 11 -cp "$ANDROID_JAR" -d build/classes \
+          javac -source 11 -target 11 \
+            -cp "$ANDROID_JAR" \
+            -d build/classes \
             src/main/java/com/mtalk/copyhook/CopyHookEntry.java
-          "$BT/d8" --lib "$ANDROID_JAR" --output build/ $(find build/classes -name "*.class")
+          "$BT/d8" \
+            --lib "$ANDROID_JAR" \
+            --output build/ \
+            $(find build/classes -name "*.class")
           mv build/classes.dex build/hook.dex
           echo "hook.dex: $(wc -c < build/hook.dex) bytes"
 
@@ -128,22 +125,31 @@ jobs:
             V="dev-$(date +%Y%m%d)-${GITHUB_SHA::7}"
           fi
           echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Version: $V"
 
       - name: Package Magisk module ZIP
         run: |
           V="${{ steps.ver.outputs.version }}"
           OUT=staging
           mkdir -p "$OUT/zygisk" "$OUT/META-INF/com/google/android"
+
           sed "s/^version=.*/version=${V}/" module.prop > "$OUT/module.prop"
           cp libs/arm64-v8a/libmtalk_copy_hook.so  "$OUT/zygisk/arm64-v8a.so"
           cp libs/armeabi-v7a/libmtalk_copy_hook.so "$OUT/zygisk/armeabi-v7a.so"
           cp build/hook.dex "$OUT/hook.dex"
-          printf '#!/system/bin/sh\nui_print "mTalk Copy Unlocker %s"\nchmod 644 "${0%%/*}/hook.dex"\n' "$V" > "$OUT/customize.sh"
-          printf '#!/system/bin/sh\nSKIPUNZIP=1\nunzip -o "$ZIPFILE" module.prop -d "$MODPATH"\nunzip -o "$ZIPFILE" hook.dex -d "$MODPATH"\nunzip -o "$ZIPFILE" customize.sh -d "$MODPATH"\nunzip -o "$ZIPFILE" "zygisk/*" -d "$MODPATH"\nchmod 755 "$MODPATH/customize.sh"\n"$MODPATH/customize.sh"\n' > "$OUT/META-INF/com/google/android/update-binary"
+
+          printf '#!/system/bin/sh\nui_print "mTalk Copy Unlocker %s"\nchmod 644 "${0%%/*}/hook.dex"\n' \
+            "$V" > "$OUT/customize.sh"
+
+          printf '#!/system/bin/sh\nSKIPUNZIP=1\nunzip -o "$ZIPFILE" module.prop -d "$MODPATH"\nunzip -o "$ZIPFILE" hook.dex -d "$MODPATH"\nunzip -o "$ZIPFILE" customize.sh -d "$MODPATH"\nunzip -o "$ZIPFILE" "zygisk/*" -d "$MODPATH"\nchmod 755 "$MODPATH/customize.sh"\n"$MODPATH/customize.sh"\n' \
+            > "$OUT/META-INF/com/google/android/update-binary"
+
           echo "#MAGISK" > "$OUT/META-INF/com/google/android/updater-script"
+
           ZIP="mtalk_copy_hook_${V}.zip"
           ( cd "$OUT" && zip -r9 "../$ZIP" . )
-          echo "$(wc -c < $ZIP) bytes"
+          echo "$(wc -c < $ZIP) bytes → $ZIP"
+          unzip -l "$ZIP"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -159,9 +165,26 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: "mTalk Copy Unlocker ${{ steps.ver.outputs.version }}"
           body: |
-            Zygisk module bypass copy restriction cho mTalk.
-            Cai: Magisk > Modules > Install from storage > Reboot
-            Debug: adb logcat -s mTalkCopyHook
+            ## mTalk Copy Unlocker ${{ steps.ver.outputs.version }}
+
+            Zygisk module bypass copy restriction cho mTalk (com.lgcns.newucap.demo).
+
+            ### v2 changes
+            - Bỏ hoàn toàn native hook (không còn crash/reboot loop)
+            - Chỉ dùng Java layer: InMemoryDexClassLoader + MethodChannel proxy
+
+            ### Yêu cầu
+            - Root + Magisk 24+ (Zygisk ON) hoặc KernelSU + ZygiskNext
+            - Android 8.0+ (API 26+)
+
+            ### Cài đặt
+            1. Tải `.zip` bên dưới
+            2. Magisk → Modules → Install from storage → Reboot
+
+            ### Debug
+            ```
+            adb logcat -s mTalkCopyHook
+            ```
           files: mtalk_copy_hook_*.zip
           draft: false
           prerelease: false
