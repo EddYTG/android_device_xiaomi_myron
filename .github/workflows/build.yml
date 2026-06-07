@@ -1,4 +1,4 @@
-name: Build mTalk Reader APK
+name: Build mTalk Copy Unlocker
 
 on:
   push:
@@ -15,9 +15,12 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     env:
+      NDK_VERSION: "25.2.9519653"
+      BUILD_TOOLS_VERSION: "34.0.0"
+      COMPILE_SDK: "34"
       DRIVE_FILE_ID: "1ir8teo1wO3Mcc0HFR6cqkq4Dsqrin0-p"
 
     steps:
@@ -51,34 +54,67 @@ jobs:
           echo "=== Tree ==="
           find . -not -path './.git/*' -not -name 'source.zip' | sort | head -30
 
+      - name: Patch Android.mk — remove Dobby
+        run: |
+          # v2 main.cpp khong dung Dobby nhung Android.mk van con block cu
+          sed -i '/LOCAL_MODULE.*:=.*dobby/,/PREBUILT_STATIC_LIBRARY/d' jni/Android.mk
+          sed -i '/LOCAL_STATIC_LIBRARIES.*dobby/d' jni/Android.mk
+          # Fix STL: main.cpp dung std::string nen can c++_static
+          sed -i 's/^APP_STL[[:space:]]*:=.*/APP_STL := c++_static/' jni/Application.mk
+          grep -q '^APP_STL' jni/Application.mk || echo 'APP_STL := c++_static' >> jni/Application.mk
+          echo "=== Android.mk ===" && cat jni/Android.mk
+          echo "=== Application.mk ===" && cat jni/Application.mk
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle wrapper and patch build files
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK and build-tools
         run: |
-          # Patch namespace truoc khi Gradle chay
-          grep -q 'namespace' app/build.gradle ||             sed -i 's/android {/android {\n    namespace "com.mtalk.reader"/' app/build.gradle
-          echo "=== app/build.gradle ===" && cat app/build.gradle
+          sdkmanager --install \
+            "ndk;${{ env.NDK_VERSION }}" \
+            "build-tools;${{ env.BUILD_TOOLS_VERSION }}" \
+            "platforms;android-${{ env.COMPILE_SDK }}"
 
-          # Tao gradlew neu chua co
-          if [ ! -f gradlew ]; then
-            curl -fsSL "https://services.gradle.org/distributions/gradle-8.4-bin.zip" -o /tmp/gradle.zip
-            unzip -q /tmp/gradle.zip -d /tmp/gradle
-            /tmp/gradle/gradle-8.4/bin/gradle wrapper --gradle-version 8.4
-          fi
-          chmod +x gradlew
-
-          # Tao gradle.properties
-          printf 'android.useAndroidX=true\nandroid.enableJetifier=true\norg.gradle.jvmargs=-Xmx2048m\n' > gradle.properties
-          cat gradle.properties
-
-      - name: Build APK
+      - name: Download zygisk.hpp
         run: |
-          ./gradlew assembleRelease --no-daemon
-          find . -name "*.apk" | xargs ls -lh
+          curl -fsSL \
+            "https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp" \
+            -o jni/zygisk.hpp
+          echo "zygisk.hpp: $(wc -c < jni/zygisk.hpp) bytes"
+
+      - name: Build native Zygisk module
+        run: |
+          NDK_HOME="${ANDROID_SDK_ROOT}/ndk/${{ env.NDK_VERSION }}"
+          $NDK_HOME/ndk-build \
+            NDK_PROJECT_PATH=. \
+            NDK_APPLICATION_MK=jni/Application.mk \
+            NDK_LIBS_OUT=libs \
+            APP_ABI="arm64-v8a armeabi-v7a" \
+            APP_OPTIM=release \
+            -j$(nproc)
+          find libs -name "*.so" -exec ls -lh {} \;
+
+      - name: Compile Java payload to DEX
+        run: |
+          ANDROID_JAR="${ANDROID_SDK_ROOT}/platforms/android-${{ env.COMPILE_SDK }}/android.jar"
+          BT="${ANDROID_SDK_ROOT}/build-tools/${{ env.BUILD_TOOLS_VERSION }}"
+          mkdir -p build/classes
+          javac -source 11 -target 11 \
+            -cp "$ANDROID_JAR" \
+            -d build/classes \
+            src/main/java/com/mtalk/copyhook/CopyHookEntry.java
+          "$BT/d8" \
+            --lib "$ANDROID_JAR" \
+            --output build/ \
+            $(find build/classes -name "*.class")
+          mv build/classes.dex build/hook.dex
+          echo "hook.dex: $(wc -c < build/hook.dex) bytes"
 
       - name: Resolve version
         id: ver
@@ -91,18 +127,35 @@ jobs:
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "Version: $V"
 
-      - name: Rename APK
+      - name: Package Magisk module ZIP
         run: |
           V="${{ steps.ver.outputs.version }}"
-          cp app/build/outputs/apk/release/app-release-unsigned.apk \
-             "mtalk_reader_${V}.apk"
-          echo "APK: $(wc -c < mtalk_reader_${V}.apk) bytes"
+          OUT=staging
+          mkdir -p "$OUT/zygisk" "$OUT/META-INF/com/google/android"
+
+          sed "s/^version=.*/version=${V}/" module.prop > "$OUT/module.prop"
+          cp libs/arm64-v8a/libmtalk_copy_hook.so  "$OUT/zygisk/arm64-v8a.so"
+          cp libs/armeabi-v7a/libmtalk_copy_hook.so "$OUT/zygisk/armeabi-v7a.so"
+          cp build/hook.dex "$OUT/hook.dex"
+
+          printf '#!/system/bin/sh\nui_print "mTalk Copy Unlocker %s"\nchmod 644 "${0%%/*}/hook.dex"\n' \
+            "$V" > "$OUT/customize.sh"
+
+          printf '#!/system/bin/sh\nSKIPUNZIP=1\nunzip -o "$ZIPFILE" module.prop -d "$MODPATH"\nunzip -o "$ZIPFILE" hook.dex -d "$MODPATH"\nunzip -o "$ZIPFILE" customize.sh -d "$MODPATH"\nunzip -o "$ZIPFILE" "zygisk/*" -d "$MODPATH"\nchmod 755 "$MODPATH/customize.sh"\n"$MODPATH/customize.sh"\n' \
+            > "$OUT/META-INF/com/google/android/update-binary"
+
+          echo "#MAGISK" > "$OUT/META-INF/com/google/android/updater-script"
+
+          ZIP="mtalk_copy_hook_${V}.zip"
+          ( cd "$OUT" && zip -r9 "../$ZIP" . )
+          echo "$(wc -c < $ZIP) bytes → $ZIP"
+          unzip -l "$ZIP"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mtalk-reader-${{ steps.ver.outputs.version }}
-          path: mtalk_reader_*.apk
+          name: mtalk_copy_hook-${{ steps.ver.outputs.version }}
+          path: mtalk_copy_hook_*.zip
           retention-days: 30
 
       - name: Create GitHub Release
@@ -110,20 +163,29 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: "mTalk Reader ${{ steps.ver.outputs.version }}"
+          name: "mTalk Copy Unlocker ${{ steps.ver.outputs.version }}"
           body: |
-            ## mTalk Reader ${{ steps.ver.outputs.version }}
+            ## mTalk Copy Unlocker ${{ steps.ver.outputs.version }}
 
-            App đọc text từ mTalk qua Accessibility Service — không cần root.
+            Zygisk module bypass copy restriction cho mTalk (com.lgcns.newucap.demo).
+
+            ### v2 changes
+            - Bỏ hoàn toàn native hook (không còn crash/reboot loop)
+            - Chỉ dùng Java layer: InMemoryDexClassLoader + MethodChannel proxy
+
+            ### Yêu cầu
+            - Root + Magisk 24+ (Zygisk ON) hoặc KernelSU + ZygiskNext
+            - Android 8.0+ (API 26+)
 
             ### Cài đặt
-            1. Cài APK
-            2. Mở app → nhấn **Mở Settings**
-            3. Tìm **mTalk Reader** → bật
-            4. Mở mTalk, xem tin nhắn muốn copy
-            5. Quay lại mTalk Reader → nhấn **Refresh**
-            6. Tap vào text → tự động copy vào clipboard
-          files: mtalk_reader_*.apk
+            1. Tải `.zip` bên dưới
+            2. Magisk → Modules → Install from storage → Reboot
+
+            ### Debug
+            ```
+            adb logcat -s mTalkCopyHook
+            ```
+          files: mtalk_copy_hook_*.zip
           draft: false
           prerelease: false
         env:
