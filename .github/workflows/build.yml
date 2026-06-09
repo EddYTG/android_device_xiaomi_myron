@@ -67,6 +67,12 @@ jobs:
 
       - name: Build APK
         run: |
+          # Tao gradlew neu chua co
+          if [ ! -f gradlew ]; then
+            curl -fsSL "https://services.gradle.org/distributions/gradle-8.4-bin.zip" -o /tmp/gradle.zip
+            unzip -q /tmp/gradle.zip -d /tmp/gradle
+            /tmp/gradle/gradle-8.4/bin/gradle wrapper --gradle-version 8.4
+          fi
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
           find . -name "*.apk" | xargs ls -lh
