@@ -154,8 +154,8 @@ jobs:
           fi
           echo "Using: $OUT"
           echo "Size: $(wc -c < "$OUT") bytes"
-          # Verify day la APK that (co PK header)
-          MAGIC=$(xxd -l 2 "$OUT" | awk '{print $2$3}')
+          # Verify day la APK that (co PK header = 50 4b)
+          MAGIC=$(xxd -l 2 "$OUT" | awk '{print $2}')
           if [ "$MAGIC" != "504b" ]; then
             echo "ERROR: file is not a valid ZIP/APK (magic=$MAGIC) — got AAR or garbage!"
             exit 1
