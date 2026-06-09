@@ -90,6 +90,8 @@ jobs:
             /tmp/gradle/gradle-8.4/bin/gradle wrapper --gradle-version 8.4
           fi
           chmod +x gradlew
+          # Patch MainHook.java truoc khi build
+          echo "CmltcG9ydCByZQpwYXRoID0gJ2FwcC9zcmMvbWFpbi9qYXZhL2NvbS9tdGFsay9jb3B5aG9vay9NYWluSG9vay5qYXZhJwp3aXRoIG9wZW4ocGF0aCkgYXMgZjoKICAgIHNyYyA9IGYucmVhZCgpCgojIFRoZW0gdGhyb3dzIFRocm93YWJsZSB2YW8gcmVwbGFjZUhvb2tlZE1ldGhvZApzcmMgPSBzcmMucmVwbGFjZSgKICAgICdwcm90ZWN0ZWQgT2JqZWN0IHJlcGxhY2VIb29rZWRNZXRob2QoTWV0aG9kSG9va1BhcmFtIHBhcmFtKSB7JywKICAgICdwcm90ZWN0ZWQgT2JqZWN0IHJlcGxhY2VIb29rZWRNZXRob2QoTWV0aG9kSG9va1BhcmFtIHBhcmFtKSB0aHJvd3MgVGhyb3dhYmxlIHsnCikKCiMgV3JhcCBpbnZva2VPcmlnaW5hbE1ldGhvZCB0cm9uZyB0cnktY2F0Y2gKc3JjID0gcmUuc3ViKAogICAgcicocmV0dXJuIFhwb3NlZEJyaWRnZVwuaW52b2tlT3JpZ2luYWxNZXRob2RcKFxzKnBhcmFtXC5tZXRob2QsXHMqcGFyYW1cLnRoaXNPYmplY3QsXHMqcGFyYW1cLmFyZ3NcKTspJywKICAgIHIndHJ5IHsgXDEgfSBjYXRjaCAoamF2YS5sYW5nLklsbGVnYWxBY2Nlc3NFeGNlcHRpb24gX2UpIHsgcmV0dXJuIG51bGw7IH0nLAogICAgc3JjCikKCndpdGggb3BlbihwYXRoLCAndycpIGFzIGY6CiAgICBmLndyaXRlKHNyYykKCmlmICd0aHJvd3MgVGhyb3dhYmxlJyBpbiBzcmMgYW5kICdJbGxlZ2FsQWNjZXNzRXhjZXB0aW9uJyBpbiBzcmM6CiAgICBwcmludCgiUGF0Y2ggT0siKQplbHNlOgogICAgcHJpbnQoIldBUk5JTkc6IHBhdGNoIG1heSBub3QgaGF2ZSBhcHBsaWVkIikKICAgIHByaW50KHNyY1tzcmMuZmluZCgncmVwbGFjZUhvb2tlZE1ldGhvZCcpOnNyYy5maW5kKCdyZXBsYWNlSG9va2VkTWV0aG9kJykrMjAwXSkK" | base64 -d | python3
           ./gradlew assembleRelease --no-daemon
           find . -name "*.apk" | xargs ls -lh
 
