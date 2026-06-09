@@ -53,16 +53,37 @@ jobs:
 
       - name: Verify & fix project plugin (must be application, not library)
         run: |
-          echo "=== Plugin check ==="
-          grep -r "com.android.application\|com.android.library" --include="*.gradle" . || true
-          # B1: Doi library -> application plugin truoc
+          echo "=== Raw plugin lines ==="
+          grep -n "android.library\|android.application\|apply plugin\|^plugins" app/build.gradle || true
+
+          # Cover tat ca syntax variants:
+          # 1. apply plugin: 'com.android.library'
           sed -i "s/apply plugin: 'com.android.library'/apply plugin: 'com.android.application'/" app/build.gradle
+          # 2. apply plugin: "com.android.library"
+          sed -i 's/apply plugin: "com.android.library"/apply plugin: "com.android.application"/' app/build.gradle
+          # 3. id("com.android.library")  [Kotlin DSL]
           sed -i 's/id("com.android.library")/id("com.android.application")/' app/build.gradle
-          # B2: Sau khi da la application, them applicationId neu chua co
-          if grep -q "com.android.application" app/build.gradle && ! grep -q "applicationId" app/build.gradle; then
+          # 4. id 'com.android.library'   [Groovy plugins block]
+          sed -i "s/id 'com.android.library'/id 'com.android.application'/" app/build.gradle
+          # 5. id("com.android.library") version "x.x.x"
+          sed -i 's/id("com.android.library") version/id("com.android.application") version/' app/build.gradle
+
+          echo "=== After patch ==="
+          grep -n "android.library\|android.application\|apply plugin" app/build.gradle || true
+
+          # Verify patch thanh cong
+          if grep -q "com.android.library" app/build.gradle; then
+            echo "ERROR: still has library plugin after patch — unknown syntax!"
+            cat app/build.gradle
+            exit 1
+          fi
+
+          # Them applicationId neu chua co (chi khi da la application)
+          if ! grep -q "applicationId" app/build.gradle; then
             sed -i '/defaultConfig {/a\        applicationId "com.mtalk.copyhook"' app/build.gradle
             echo "Added applicationId"
           fi
+
           echo "=== app/build.gradle ===" && cat app/build.gradle
 
       - name: Patch build.gradle — use Maven for XposedBridge
