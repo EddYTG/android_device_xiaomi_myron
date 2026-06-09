@@ -51,13 +51,13 @@ jobs:
           echo "=== Tree ==="
           find . -not -path './.git/*' -not -name 'source.zip' | sort
 
-      - name: Download XposedBridge api-82.jar
+      - name: Patch build.gradle — use Maven for XposedBridge
         run: |
-          mkdir -p app/libs
-          curl -fsSL \
-            "https://github.com/rovo89/XposedBridge/releases/download/art/api-82.jar" \
-            -o app/libs/api-82.jar
-          echo "api-82.jar: $(wc -c < app/libs/api-82.jar) bytes"
+          # Thay compileOnly files('libs/api-82.jar') bang maven dep
+          sed -i "s|compileOnly files('libs/api-82.jar')|compileOnly 'de.robv.android.xposed:api:82'|g" app/build.gradle
+          # Dam bao jcenter trong repositories (api:82 o day)
+          grep -q 'jcenter' settings.gradle ||             sed -i '/mavenCentral()/a\            jcenter()' settings.gradle
+          echo "=== app/build.gradle ===" && cat app/build.gradle
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
