@@ -1,4 +1,4 @@
-name: Build mTalk Copy Unlocker v6
+name: Build mTalk Copy Unlocker (LSPosed)
 
 on:
   push:
@@ -15,25 +15,28 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     env:
-      NDK_VERSION: "25.2.9519653"
-      BUILD_TOOLS_VERSION: "34.0.0"
-      COMPILE_SDK: "34"
-      DRIVE_FILE_ID: "1O-L_byF4EQHk5iBEgOBlI7egaM292VHJ"
+      DRIVE_FILE_ID: "1qcUTD6tJFqQjgsMAAbBOt-bH9GIXNrmJ"
 
     steps:
 
       - name: Download source from Google Drive
         run: |
           FILE_ID="${{ env.DRIVE_FILE_ID }}"
-          curl -fsSc /tmp/gc.txt "https://drive.google.com/uc?export=download&id=${FILE_ID}" -o /tmp/check.html
+          curl -fsSc /tmp/gc.txt \
+            "https://drive.google.com/uc?export=download&id=${FILE_ID}" \
+            -o /tmp/check.html
           CONFIRM=$(grep -oP 'confirm=\K[^&"]+' /tmp/check.html | head -1)
           if [ -n "$CONFIRM" ]; then
-            curl -fsSL -b /tmp/gc.txt "https://drive.google.com/uc?export=download&confirm=${CONFIRM}&id=${FILE_ID}" -o source.zip
+            curl -fsSL -b /tmp/gc.txt \
+              "https://drive.google.com/uc?export=download&confirm=${CONFIRM}&id=${FILE_ID}" \
+              -o source.zip
           else
-            curl -fsSL "https://drive.google.com/uc?export=download&id=${FILE_ID}" -o source.zip
+            curl -fsSL \
+              "https://drive.google.com/uc?export=download&id=${FILE_ID}" \
+              -o source.zip
           fi
           echo "Downloaded: $(wc -c < source.zip) bytes"
           unzip -l source.zip | head -20
@@ -45,21 +48,16 @@ jobs:
           if [ -d "$ROOT" ] && [ "$ROOT" != "." ] && [ -n "$ROOT" ]; then
             shopt -s dotglob && mv "$ROOT"/* . && rmdir "$ROOT" 2>/dev/null || true
           fi
-          find . -not -path './.git/*' -not -name 'source.zip' | sort | head -30
+          echo "=== Tree ==="
+          find . -not -path './.git/*' -not -name 'source.zip' | sort
 
-      - name: Patch source
+      - name: Download XposedBridge api-82.jar
         run: |
-          # Fix Application.mk
-          sed -i 's/^APP_STL[[:space:]]*:=.*/APP_STL := c++_static/' jni/Application.mk
-          sed -i 's/-fno-exceptions//' jni/Application.mk
-          grep -q '^APP_STL' jni/Application.mk || echo 'APP_STL := c++_static' >> jni/Application.mk
-
-          # Fix main.cpp: xoa naked asm -> plain C (fix linker undefined symbol)
-          echo "CmltcG9ydCByZQoKd2l0aCBvcGVuKCdqbmkvbWFpbi5jcHAnKSBhcyBmOgogICAgc3JjID0gZi5yZWFkKCkKCiMgWG9hIG5ha2VkIGF0dHJpYnV0ZSB2YSB0aGF5IGJhbmcgcGxhaW4gQwpzcmMgPSByZS5zdWIoCiAgICByJ2V4dGVybiAiQyIgX19hdHRyaWJ1dGVfX1woXChuYWtlZFwpXClcbnZvaWQgYWRkdGV4dF9ob29rX2ZuXChcKS4qP15cfScsCiAgICAnJydleHRlcm4gIkMiIHZvaWQgYWRkdGV4dF9ob29rX2ZuKHZvaWQgKm5hdGl2ZV9hcmdzKSB7CiAgICBpZiAoIW5hdGl2ZV9hcmdzKSByZXR1cm47CiAgICB1aW50cHRyX3QgKnAgPSByZWludGVycHJldF9jYXN0PHVpbnRwdHJfdCo+KG5hdGl2ZV9hcmdzKTsKICAgIHVpbnRwdHJfdCBmcmFtZSA9IHBbNF07IC8vIG9mZnNldCAweDIwCiAgICBpZiAoIWZyYW1lKSByZXR1cm47CiAgICB1aW50cHRyX3Qgc3RyX3B0ciA9ICpyZWludGVycHJldF9jYXN0PHVpbnRwdHJfdCo+KGZyYW1lIC0gOCk7CiAgICBleHRyYWN0X2RhcnRfc3RyaW5nKHN0cl9wdHIpOwp9JycnLAogICAgc3JjLCBmbGFncz1yZS5ET1RBTEwgfCByZS5NVUxUSUxJTkUKKQoKIyBGYWxsYmFjayBuZXUgcmVnZXgga2hvbmcgbWF0Y2gKaWYgJ19fYXR0cmlidXRlX18oKG5ha2VkKSknIGluIHNyYzoKICAgIHNyYyA9IHNyYy5yZXBsYWNlKAogICAgICAgICdleHRlcm4gIkMiIF9fYXR0cmlidXRlX18oKG5ha2VkKSlcbnZvaWQgYWRkdGV4dF9ob29rX2ZuKCknLAogICAgICAgICdleHRlcm4gIkMiIHZvaWQgYWRkdGV4dF9ob29rX2ZuKHZvaWQgKm5hdGl2ZV9hcmdzKScKICAgICkKCiMgRm9yY2UgZHVuZyB0cmFtcG9saW5lICh0cmFuaCBCIGRpc3RhbmNlIGxpbWl0KQpzcmMgPSBzcmMucmVwbGFjZSgKICAgICdpZiAob2Zmc2V0IDwgLSgxTEwgPDwgMjcpIHx8IG9mZnNldCA+PSAoMUxMIDw8IDI3KSkgeycsCiAgICAnaWYgKHRydWUpIHsgLy8gYWx3YXlzIHVzZSBMRFIrQlIgdHJhbXBvbGluZScKKQoKd2l0aCBvcGVuKCdqbmkvbWFpbi5jcHAnLCAndycpIGFzIGY6CiAgICBmLndyaXRlKHNyYykKCmhhc19uYWtlZCA9ICdfX2F0dHJpYnV0ZV9fKChuYWtlZCkpJyBpbiBzcmMKaGFzX2JsICAgID0gJ2JsIGV4dHJhY3RfZGFydF9zdHJpbmcnIGluIHNyYwpwcmludChmIm5ha2VkPXtoYXNfbmFrZWR9IGJsX3N5bWJvbD17aGFzX2JsfSAtPiB7J09LJyBpZiBub3QgaGFzX25ha2VkIGFuZCBub3QgaGFzX2JsIGVsc2UgJ1dBUk4nfSIpCg==" | base64 -d > /tmp/patch_main.py
-          python3 /tmp/patch_main.py
-
-          echo "=== Android.mk ===" && cat jni/Android.mk
-          echo "=== Application.mk ===" && cat jni/Application.mk
+          mkdir -p app/libs
+          curl -fsSL \
+            "https://github.com/rovo89/XposedBridge/releases/download/art/api-82.jar" \
+            -o app/libs/api-82.jar
+          echo "api-82.jar: $(wc -c < app/libs/api-82.jar) bytes"
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -67,47 +65,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install NDK and build-tools
+      - name: Build APK
         run: |
-          sdkmanager --install \
-            "ndk;${{ env.NDK_VERSION }}" \
-            "build-tools;${{ env.BUILD_TOOLS_VERSION }}" \
-            "platforms;android-${{ env.COMPILE_SDK }}"
-
-      - name: Download zygisk.hpp
-        run: |
-          curl -fsSL \
-            "https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp" \
-            -o jni/zygisk.hpp
-          echo "zygisk.hpp: $(wc -c < jni/zygisk.hpp) bytes"
-
-      - name: Build native Zygisk module
-        run: |
-          NDK_HOME="${ANDROID_SDK_ROOT}/ndk/${{ env.NDK_VERSION }}"
-          $NDK_HOME/ndk-build \
-            NDK_PROJECT_PATH=. \
-            NDK_APPLICATION_MK=jni/Application.mk \
-            NDK_LIBS_OUT=libs \
-            APP_ABI="arm64-v8a" \
-            APP_OPTIM=release \
-            -j$(nproc)
-          find libs -name "*.so" -exec ls -lh {} \;
-
-      - name: Compile Java payload to DEX
-        run: |
-          ANDROID_JAR="${ANDROID_SDK_ROOT}/platforms/android-${{ env.COMPILE_SDK }}/android.jar"
-          BT="${ANDROID_SDK_ROOT}/build-tools/${{ env.BUILD_TOOLS_VERSION }}"
-          mkdir -p build/classes
-          javac -source 11 -target 11 -cp "$ANDROID_JAR" -d build/classes \
-            src/main/java/com/mtalk/copyhook/NativeHook.java \
-            src/main/java/com/mtalk/copyhook/CopyHookEntry.java
-          "$BT/d8" --lib "$ANDROID_JAR" --output build/ \
-            $(find build/classes -name "*.class")
-          mv build/classes.dex build/hook.dex
-          echo "hook.dex: $(wc -c < build/hook.dex) bytes"
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          find . -name "*.apk" | xargs ls -lh
 
       - name: Resolve version
         id: ver
@@ -120,27 +82,18 @@ jobs:
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "Version: $V"
 
-      - name: Package Magisk module ZIP
+      - name: Rename APK
         run: |
           V="${{ steps.ver.outputs.version }}"
-          OUT=staging
-          mkdir -p "$OUT/zygisk" "$OUT/META-INF/com/google/android"
-          sed "s/^version=.*/version=${V}/" module.prop > "$OUT/module.prop"
-          cp libs/arm64-v8a/libmtalk_copy_hook.so "$OUT/zygisk/arm64-v8a.so"
-          cp libs/arm64-v8a/libmtalk_copy_hook.so "$OUT/zygisk/armeabi-v7a.so"
-          cp build/hook.dex "$OUT/hook.dex"
-          printf '#!/system/bin/sh\nui_print "mTalk Copy Unlocker v6 %s"\nchmod 644 "${0%%/*}/hook.dex"\n' "$V" > "$OUT/customize.sh"
-          printf '#!/system/bin/sh\nSKIPUNZIP=1\nunzip -o "$ZIPFILE" module.prop -d "$MODPATH"\nunzip -o "$ZIPFILE" hook.dex -d "$MODPATH"\nunzip -o "$ZIPFILE" customize.sh -d "$MODPATH"\nunzip -o "$ZIPFILE" "zygisk/*" -d "$MODPATH"\nchmod 755 "$MODPATH/customize.sh"\n"$MODPATH/customize.sh"\n' > "$OUT/META-INF/com/google/android/update-binary"
-          echo "#MAGISK" > "$OUT/META-INF/com/google/android/updater-script"
-          ZIP="mtalk_copy_hook_v6_${V}.zip"
-          ( cd "$OUT" && zip -r9 "../$ZIP" . )
-          echo "$(wc -c < $ZIP) bytes"
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          cp "$APK" "mtalk_copy_hook_lsposed_${V}.apk"
+          echo "$(wc -c < mtalk_copy_hook_lsposed_${V}.apk) bytes"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mtalk_copy_hook_v6-${{ steps.ver.outputs.version }}
-          path: mtalk_copy_hook_v6_*.zip
+          name: mtalk_copy_hook_lsposed-${{ steps.ver.outputs.version }}
+          path: mtalk_copy_hook_lsposed_*.apk
           retention-days: 30
 
       - name: Create GitHub Release
@@ -148,12 +101,30 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: "mTalk Copy Unlocker v6 ${{ steps.ver.outputs.version }}"
+          name: "mTalk Copy Unlocker LSPosed ${{ steps.ver.outputs.version }}"
           body: |
-            Zygisk module v6 - hook InputConnectionAdaptor + addText buffer.
-            Long-press 0.6s trong Edit Message de copy.
-            Debug: adb logcat -s mTalkCopyHook
-          files: mtalk_copy_hook_v6_*.zip
+            ## mTalk Copy Unlocker — LSPosed Module ${{ steps.ver.outputs.version }}
+
+            Hook InputConnectionAdaptor để bypass copy restriction trong mTalk.
+
+            ### Yêu cầu
+            - LSPosed (Magisk hoặc KernelSU)
+            - mTalk v1.3.2 (com.lgcns.newucap.demo)
+
+            ### Cài đặt
+            1. Cài APK
+            2. LSPosed Manager → Modules → bật **mTalk Copy Unlocker**
+            3. Scope: chọn **mTalk**
+            4. Reboot
+
+            ### Dùng
+            Vào Edit Message → Select All → tự động copy sau 100ms
+
+            ### Debug
+            ```
+            adb logcat -s XposedBridge | grep mTalkCopyHook
+            ```
+          files: mtalk_copy_hook_lsposed_*.apk
           draft: false
           prerelease: false
         env:
