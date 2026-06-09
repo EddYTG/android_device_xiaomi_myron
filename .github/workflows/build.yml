@@ -55,15 +55,13 @@ jobs:
         run: |
           echo "=== Plugin check ==="
           grep -r "com.android.application\|com.android.library" --include="*.gradle" . || true
-          # Neu dang dung library plugin thi doi sang application
-          if grep -q "com.android.library" app/build.gradle && ! grep -q "com.android.application" app/build.gradle; then
-            echo "WARNING: library plugin detected — patching to application"
-            sed -i "s/apply plugin: 'com.android.library'/apply plugin: 'com.android.application'/" app/build.gradle
-            sed -i 's/id("com.android.library")/id("com.android.application")/' app/build.gradle
-          fi
-          # Dam bao co applicationId
-          if ! grep -q "applicationId" app/build.gradle; then
+          # B1: Doi library -> application plugin truoc
+          sed -i "s/apply plugin: 'com.android.library'/apply plugin: 'com.android.application'/" app/build.gradle
+          sed -i 's/id("com.android.library")/id("com.android.application")/' app/build.gradle
+          # B2: Sau khi da la application, them applicationId neu chua co
+          if grep -q "com.android.application" app/build.gradle && ! grep -q "applicationId" app/build.gradle; then
             sed -i '/defaultConfig {/a\        applicationId "com.mtalk.copyhook"' app/build.gradle
+            echo "Added applicationId"
           fi
           echo "=== app/build.gradle ===" && cat app/build.gradle
 
