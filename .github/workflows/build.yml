@@ -51,27 +51,39 @@ jobs:
           echo "=== Tree ==="
           find . -not -path './.git/*' -not -name 'source.zip' | sort
 
+      - name: Verify & fix project plugin (must be application, not library)
+        run: |
+          echo "=== Plugin check ==="
+          grep -r "com.android.application\|com.android.library" --include="*.gradle" . || true
+          # Neu dang dung library plugin thi doi sang application
+          if grep -q "com.android.library" app/build.gradle && ! grep -q "com.android.application" app/build.gradle; then
+            echo "WARNING: library plugin detected — patching to application"
+            sed -i "s/apply plugin: 'com.android.library'/apply plugin: 'com.android.application'/" app/build.gradle
+            sed -i 's/id("com.android.library")/id("com.android.application")/' app/build.gradle
+          fi
+          # Dam bao co applicationId
+          if ! grep -q "applicationId" app/build.gradle; then
+            sed -i '/defaultConfig {/a\        applicationId "com.mtalk.copyhook"' app/build.gradle
+          fi
+          echo "=== app/build.gradle ===" && cat app/build.gradle
+
       - name: Patch build.gradle — use Maven for XposedBridge
         run: |
-          # Thay compileOnly files('libs/api-82.jar') bang maven dep
           sed -i "s|compileOnly files('libs/api-82.jar')|compileOnly 'de.robv.android.xposed:api:82'|g" app/build.gradle
-          # Dam bao jcenter trong repositories (api:82 o day)
-          grep -q 'jcenter' settings.gradle ||             sed -i '/mavenCentral()/a\            jcenter()' settings.gradle
+          grep -q 'jcenter' settings.gradle || \
+            sed -i '/mavenCentral()/a\            jcenter()' settings.gradle
           echo "=== app/build.gradle ===" && cat app/build.gradle
 
       - name: Download XposedBridge jars
         run: |
           mkdir -p app/libs
-
-          # api-82.jar tu bywhat/XposedBridgeApi (mirror cua rovo89)
-          curl -fsSL             "https://raw.githubusercontent.com/bywhat/XposedBridgeApi/main/XposedBridgeAPI-82.jar"             -o app/libs/api-82.jar
+          curl -fsSL \
+            "https://raw.githubusercontent.com/bywhat/XposedBridgeApi/main/XposedBridgeAPI-82.jar" \
+            -o app/libs/api-82.jar
           echo "api-82.jar: $(wc -c < app/libs/api-82.jar) bytes"
-
-          # Patch build.gradle: xoa ca 2 compileOnly dep, dung local jar
           sed -i '/compileOnly.*libxposed/d' app/build.gradle
           sed -i '/compileOnly.*robv/d' app/build.gradle
           sed -i "s|compileOnly files('libs/api-82.jar')||g" app/build.gradle
-          # Them vao dependencies block
           sed -i "/^dependencies {/a\    compileOnly fileTree(dir: 'libs', include: ['*.jar'])" app/build.gradle
           echo "=== app/build.gradle ===" && cat app/build.gradle
 
@@ -83,7 +95,6 @@ jobs:
 
       - name: Build APK
         run: |
-          # Tao gradlew neu chua co
           if [ ! -f gradlew ]; then
             curl -fsSL "https://services.gradle.org/distributions/gradle-8.4-bin.zip" -o /tmp/gradle.zip
             unzip -q /tmp/gradle.zip -d /tmp/gradle
@@ -92,8 +103,9 @@ jobs:
           chmod +x gradlew
           # Patch MainHook.java truoc khi build
           echo "CmltcG9ydCByZQpwYXRoID0gJ2FwcC9zcmMvbWFpbi9qYXZhL2NvbS9tdGFsay9jb3B5aG9vay9NYWluSG9vay5qYXZhJwp3aXRoIG9wZW4ocGF0aCkgYXMgZjoKICAgIHNyYyA9IGYucmVhZCgpCgojIFRoZW0gdGhyb3dzIFRocm93YWJsZSB2YW8gcmVwbGFjZUhvb2tlZE1ldGhvZApzcmMgPSBzcmMucmVwbGFjZSgKICAgICdwcm90ZWN0ZWQgT2JqZWN0IHJlcGxhY2VIb29rZWRNZXRob2QoTWV0aG9kSG9va1BhcmFtIHBhcmFtKSB7JywKICAgICdwcm90ZWN0ZWQgT2JqZWN0IHJlcGxhY2VIb29rZWRNZXRob2QoTWV0aG9kSG9va1BhcmFtIHBhcmFtKSB0aHJvd3MgVGhyb3dhYmxlIHsnCikKCiMgV3JhcCBpbnZva2VPcmlnaW5hbE1ldGhvZCB0cm9uZyB0cnktY2F0Y2gKc3JjID0gcmUuc3ViKAogICAgcicocmV0dXJuIFhwb3NlZEJyaWRnZVwuaW52b2tlT3JpZ2luYWxNZXRob2RcKFxzKnBhcmFtXC5tZXRob2QsXHMqcGFyYW1cLnRoaXNPYmplY3QsXHMqcGFyYW1cLmFyZ3NcKTspJywKICAgIHIndHJ5IHsgXDEgfSBjYXRjaCAoamF2YS5sYW5nLklsbGVnYWxBY2Nlc3NFeGNlcHRpb24gX2UpIHsgcmV0dXJuIG51bGw7IH0nLAogICAgc3JjCikKCndpdGggb3BlbihwYXRoLCAndycpIGFzIGY6CiAgICBmLndyaXRlKHNyYykKCmlmICd0aHJvd3MgVGhyb3dhYmxlJyBpbiBzcmMgYW5kICdJbGxlZ2FsQWNjZXNzRXhjZXB0aW9uJyBpbiBzcmM6CiAgICBwcmludCgiUGF0Y2ggT0siKQplbHNlOgogICAgcHJpbnQoIldBUk5JTkc6IHBhdGNoIG1heSBub3QgaGF2ZSBhcHBsaWVkIikKICAgIHByaW50KHNyY1tzcmMuZmluZCgncmVwbGFjZUhvb2tlZE1ldGhvZCcpOnNyYy5maW5kKCdyZXBsYWNlSG9va2VkTWV0aG9kJykrMjAwXSkK" | base64 -d | python3
-          ./gradlew assembleRelease --no-daemon
-          find . -name "*.apk" | xargs ls -lh
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tail -80
+          echo "=== APK files found ==="
+          find . -name "*.apk" -not -path './.gradle/*' | xargs ls -lh 2>/dev/null || echo "No APK found!"
 
       - name: Resolve version
         id: ver
@@ -111,10 +123,26 @@ jobs:
           V="${{ steps.ver.outputs.version }}"
           echo "=== Build outputs ==="
           find app/build/outputs/ | sort
-          OUT=$(find app/build/outputs -name "*.apk" -o -name "*.aar" | head -1)
-          if [ -z "$OUT" ]; then echo "ERROR: no output found" && exit 1; fi
+          # FIX: chi tim .apk, dung ngoac de fix precedence cua find -o
+          OUT=$(find app/build/outputs \( -name "*.apk" \) | grep -v "unsigned" | head -1)
+          # Fallback: lay ca unsigned neu khong co signed
+          if [ -z "$OUT" ]; then
+            OUT=$(find app/build/outputs \( -name "*.apk" \) | head -1)
+          fi
+          if [ -z "$OUT" ]; then
+            echo "ERROR: no APK found in app/build/outputs — build failed!"
+            exit 1
+          fi
+          echo "Using: $OUT"
+          echo "Size: $(wc -c < "$OUT") bytes"
+          # Verify day la APK that (co PK header)
+          MAGIC=$(xxd -l 2 "$OUT" | awk '{print $2$3}')
+          if [ "$MAGIC" != "504b" ]; then
+            echo "ERROR: file is not a valid ZIP/APK (magic=$MAGIC) — got AAR or garbage!"
+            exit 1
+          fi
           cp "$OUT" "mtalk_copy_hook_lsposed_${V}.apk"
-          echo "$(wc -c < mtalk_copy_hook_lsposed_${V}.apk) bytes -> $OUT"
+          echo "OK: mtalk_copy_hook_lsposed_${V}.apk"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
