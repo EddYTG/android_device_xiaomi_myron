@@ -109,9 +109,12 @@ jobs:
       - name: Rename APK
         run: |
           V="${{ steps.ver.outputs.version }}"
-          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
-          cp "$APK" "mtalk_copy_hook_lsposed_${V}.apk"
-          echo "$(wc -c < mtalk_copy_hook_lsposed_${V}.apk) bytes"
+          echo "=== Build outputs ==="
+          find app/build/outputs/ | sort
+          OUT=$(find app/build/outputs -name "*.apk" -o -name "*.aar" | head -1)
+          if [ -z "$OUT" ]; then echo "ERROR: no output found" && exit 1; fi
+          cp "$OUT" "mtalk_copy_hook_lsposed_${V}.apk"
+          echo "$(wc -c < mtalk_copy_hook_lsposed_${V}.apk) bytes -> $OUT"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
