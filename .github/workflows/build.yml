@@ -1,4 +1,4 @@
-name: Build mTalk Copy Unlocker v6
+name: Build mTalk 10KB Bypass
 
 on:
   push:
@@ -19,8 +19,6 @@ jobs:
 
     env:
       NDK_VERSION: "25.2.9519653"
-      BUILD_TOOLS_VERSION: "34.0.0"
-      COMPILE_SDK: "34"
       DRIVE_FILE_ID: "1GDbkySpkBaXJQ3JJSKGwQbQk6vUT2Tgv"
 
     steps:
@@ -47,40 +45,18 @@ jobs:
           fi
           find . -not -path './.git/*' -not -name 'source.zip' | sort | head -30
 
-      - name: Patch source
-        run: |
-          # Fix Application.mk
-          sed -i 's/^APP_STL[[:space:]]*:=.*/APP_STL := c++_static/' jni/Application.mk
-          sed -i 's/-fno-exceptions//' jni/Application.mk
-          grep -q '^APP_STL' jni/Application.mk || echo 'APP_STL := c++_static' >> jni/Application.mk
-
-          # Fix main.cpp: xoa naked asm -> plain C (fix linker undefined symbol)
-          echo "CmltcG9ydCByZQoKd2l0aCBvcGVuKCdqbmkvbWFpbi5jcHAnKSBhcyBmOgogICAgc3JjID0gZi5yZWFkKCkKCiMgWG9hIG5ha2VkIGF0dHJpYnV0ZSB2YSB0aGF5IGJhbmcgcGxhaW4gQwpzcmMgPSByZS5zdWIoCiAgICByJ2V4dGVybiAiQyIgX19hdHRyaWJ1dGVfX1woXChuYWtlZFwpXClcbnZvaWQgYWRkdGV4dF9ob29rX2ZuXChcKS4qP15cfScsCiAgICAnJydleHRlcm4gIkMiIHZvaWQgYWRkdGV4dF9ob29rX2ZuKHZvaWQgKm5hdGl2ZV9hcmdzKSB7CiAgICBpZiAoIW5hdGl2ZV9hcmdzKSByZXR1cm47CiAgICB1aW50cHRyX3QgKnAgPSByZWludGVycHJldF9jYXN0PHVpbnRwdHJfdCo+KG5hdGl2ZV9hcmdzKTsKICAgIHVpbnRwdHJfdCBmcmFtZSA9IHBbNF07IC8vIG9mZnNldCAweDIwCiAgICBpZiAoIWZyYW1lKSByZXR1cm47CiAgICB1aW50cHRyX3Qgc3RyX3B0ciA9ICpyZWludGVycHJldF9jYXN0PHVpbnRwdHJfdCo+KGZyYW1lIC0gOCk7CiAgICBleHRyYWN0X2RhcnRfc3RyaW5nKHN0cl9wdHIpOwp9JycnLAogICAgc3JjLCBmbGFncz1yZS5ET1RBTEwgfCByZS5NVUxUSUxJTkUKKQoKIyBGYWxsYmFjayBuZXUgcmVnZXgga2hvbmcgbWF0Y2gKaWYgJ19fYXR0cmlidXRlX18oKG5ha2VkKSknIGluIHNyYzoKICAgIHNyYyA9IHNyYy5yZXBsYWNlKAogICAgICAgICdleHRlcm4gIkMiIF9fYXR0cmlidXRlX18oKG5ha2VkKSlcbnZvaWQgYWRkdGV4dF9ob29rX2ZuKCknLAogICAgICAgICdleHRlcm4gIkMiIHZvaWQgYWRkdGV4dF9ob29rX2ZuKHZvaWQgKm5hdGl2ZV9hcmdzKScKICAgICkKCiMgRm9yY2UgZHVuZyB0cmFtcG9saW5lICh0cmFuaCBCIGRpc3RhbmNlIGxpbWl0KQpzcmMgPSBzcmMucmVwbGFjZSgKICAgICdpZiAob2Zmc2V0IDwgLSgxTEwgPDwgMjcpIHx8IG9mZnNldCA+PSAoMUxMIDw8IDI3KSkgeycsCiAgICAnaWYgKHRydWUpIHsgLy8gYWx3YXlzIHVzZSBMRFIrQlIgdHJhbXBvbGluZScKKQoKd2l0aCBvcGVuKCdqbmkvbWFpbi5jcHAnLCAndycpIGFzIGY6CiAgICBmLndyaXRlKHNyYykKCmhhc19uYWtlZCA9ICdfX2F0dHJpYnV0ZV9fKChuYWtlZCkpJyBpbiBzcmMKaGFzX2JsICAgID0gJ2JsIGV4dHJhY3RfZGFydF9zdHJpbmcnIGluIHNyYwpwcmludChmIm5ha2VkPXtoYXNfbmFrZWR9IGJsX3N5bWJvbD17aGFzX2JsfSAtPiB7J09LJyBpZiBub3QgaGFzX25ha2VkIGFuZCBub3QgaGFzX2JsIGVsc2UgJ1dBUk4nfSIpCg==" | base64 -d > /tmp/patch_main.py
-          python3 /tmp/patch_main.py
-
-          echo "=== Android.mk ===" && cat jni/Android.mk
-          echo "=== Application.mk ===" && cat jni/Application.mk
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install NDK and build-tools
+      - name: Install NDK
         run: |
-          sdkmanager --install \
-            "ndk;${{ env.NDK_VERSION }}" \
-            "build-tools;${{ env.BUILD_TOOLS_VERSION }}" \
-            "platforms;android-${{ env.COMPILE_SDK }}"
+          sdkmanager --install "ndk;${{ env.NDK_VERSION }}" 2>&1 | tail -5
+          echo "NDK installed: $ANDROID_SDK_ROOT/ndk/${{ env.NDK_VERSION }}"
 
       - name: Download zygisk.hpp
         run: |
           curl -fsSL \
-            "https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp" \
+            "https://raw.githubusercontent.com/topjohnwu/zygisk-api/v4.1.0/zygisk.hpp" \
             -o jni/zygisk.hpp
           echo "zygisk.hpp: $(wc -c < jni/zygisk.hpp) bytes"
 
@@ -89,25 +65,12 @@ jobs:
           NDK_HOME="${ANDROID_SDK_ROOT}/ndk/${{ env.NDK_VERSION }}"
           $NDK_HOME/ndk-build \
             NDK_PROJECT_PATH=. \
+            APP_BUILD_SCRIPT=jni/Android.mk \
             NDK_APPLICATION_MK=jni/Application.mk \
-            NDK_LIBS_OUT=libs \
-            APP_ABI="arm64-v8a" \
+            APP_ABI="arm64-v8a armeabi-v7a" \
             APP_OPTIM=release \
-            -j$(nproc)
+            -j$(nproc) V=0
           find libs -name "*.so" -exec ls -lh {} \;
-
-      - name: Compile Java payload to DEX
-        run: |
-          ANDROID_JAR="${ANDROID_SDK_ROOT}/platforms/android-${{ env.COMPILE_SDK }}/android.jar"
-          BT="${ANDROID_SDK_ROOT}/build-tools/${{ env.BUILD_TOOLS_VERSION }}"
-          mkdir -p build/classes
-          javac -source 11 -target 11 -cp "$ANDROID_JAR" -d build/classes \
-            src/main/java/com/mtalk/copyhook/NativeHook.java \
-            src/main/java/com/mtalk/copyhook/CopyHookEntry.java
-          "$BT/d8" --lib "$ANDROID_JAR" --output build/ \
-            $(find build/classes -name "*.class")
-          mv build/classes.dex build/hook.dex
-          echo "hook.dex: $(wc -c < build/hook.dex) bytes"
 
       - name: Resolve version
         id: ver
@@ -125,22 +88,40 @@ jobs:
           V="${{ steps.ver.outputs.version }}"
           OUT=staging
           mkdir -p "$OUT/zygisk" "$OUT/META-INF/com/google/android"
-          sed "s/^version=.*/version=${V}/" module.prop > "$OUT/module.prop"
-          cp libs/arm64-v8a/libmtalk_copy_hook.so "$OUT/zygisk/arm64-v8a.so"
-          cp libs/arm64-v8a/libmtalk_copy_hook.so "$OUT/zygisk/armeabi-v7a.so"
-          cp build/hook.dex "$OUT/hook.dex"
-          printf '#!/system/bin/sh\nui_print "mTalk Copy Unlocker v6 %s"\nchmod 644 "${0%%/*}/hook.dex"\n' "$V" > "$OUT/customize.sh"
-          printf '#!/system/bin/sh\nSKIPUNZIP=1\nunzip -o "$ZIPFILE" module.prop -d "$MODPATH"\nunzip -o "$ZIPFILE" hook.dex -d "$MODPATH"\nunzip -o "$ZIPFILE" customize.sh -d "$MODPATH"\nunzip -o "$ZIPFILE" "zygisk/*" -d "$MODPATH"\nchmod 755 "$MODPATH/customize.sh"\n"$MODPATH/customize.sh"\n' > "$OUT/META-INF/com/google/android/update-binary"
+
+          cp module.prop                        "$OUT/module.prop"
+          cp libs/arm64-v8a/libmtalk_10kb.so    "$OUT/zygisk/arm64-v8a.so"
+          cp libs/armeabi-v7a/libmtalk_10kb.so  "$OUT/zygisk/armeabi-v7a.so"
+
+          cat > "$OUT/customize.sh" << 'SH'
+#!/system/bin/sh
+ui_print "- mTalk 10KB Bypass"
+ui_print "- Patch: libapp.so+0x992098 (b.ge -> nop)"
+ui_print "- Target: com.lgcns.newucap.demo v1.3.2"
+SH
+
+          cat > "$OUT/META-INF/com/google/android/update-binary" << 'SH'
+#!/system/bin/sh
+SKIPUNZIP=1
+unzip -o "$ZIPFILE" module.prop  -d "$MODPATH"
+unzip -o "$ZIPFILE" customize.sh -d "$MODPATH"
+unzip -o "$ZIPFILE" 'zygisk/*'   -d "$MODPATH"
+chmod 755 "$MODPATH/customize.sh"
+. "$MODPATH/customize.sh"
+SH
+
           echo "#MAGISK" > "$OUT/META-INF/com/google/android/updater-script"
-          ZIP="mtalk_copy_hook_v6_${V}.zip"
+
+          ZIP="mtalk_10kb_bypass_${V}.zip"
           ( cd "$OUT" && zip -r9 "../$ZIP" . )
-          echo "$(wc -c < $ZIP) bytes"
+          echo "ZIP_NAME=$ZIP" >> "$GITHUB_ENV"
+          echo "Built: $ZIP ($(wc -c < $ZIP) bytes)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mtalk_copy_hook_v6-${{ steps.ver.outputs.version }}
-          path: mtalk_copy_hook_v6_*.zip
+          name: mtalk_10kb_bypass-${{ steps.ver.outputs.version }}
+          path: ${{ env.ZIP_NAME }}
           retention-days: 30
 
       - name: Create GitHub Release
@@ -148,12 +129,14 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: "mTalk Copy Unlocker v6 ${{ steps.ver.outputs.version }}"
+          name: "mTalk 10KB Bypass ${{ steps.ver.outputs.version }}"
           body: |
-            Zygisk module v6 - hook InputConnectionAdaptor + addText buffer.
-            Long-press 0.6s trong Edit Message de copy.
-            Debug: adb logcat -s mTalkCopyHook
-          files: mtalk_copy_hook_v6_*.zip
+            Bo gioi han "Please keep your message to 10KB or less"
+            Patch: libapp.so+0x992098 (b.ge -> nop)
+
+            Install: Magisk -> Modules -> Install from storage -> Reboot
+            Debug: adb logcat | grep mTalk10KB
+          files: ${{ env.ZIP_NAME }}
           draft: false
           prerelease: false
         env:
