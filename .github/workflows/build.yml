@@ -2,10 +2,10 @@ name: Build mTalk 10KB Bypass
 
 on:
   push:
-    branches: [ main, master ]
-    tags: [ 'v*' ]
+    branches: [main, master]
+    tags: ['v*']
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch:
 
 concurrency:
@@ -26,12 +26,18 @@ jobs:
       - name: Download source from Google Drive
         run: |
           FILE_ID="${{ env.DRIVE_FILE_ID }}"
-          curl -fsSc /tmp/gc.txt "https://drive.google.com/uc?export=download&id=${FILE_ID}" -o /tmp/check.html
+          curl -fsSc /tmp/gc.txt \
+            "https://drive.google.com/uc?export=download&id=${FILE_ID}" \
+            -o /tmp/check.html
           CONFIRM=$(grep -oP 'confirm=\K[^&"]+' /tmp/check.html | head -1)
           if [ -n "$CONFIRM" ]; then
-            curl -fsSL -b /tmp/gc.txt "https://drive.google.com/uc?export=download&confirm=${CONFIRM}&id=${FILE_ID}" -o source.zip
+            curl -fsSL -b /tmp/gc.txt \
+              "https://drive.google.com/uc?export=download&confirm=${CONFIRM}&id=${FILE_ID}" \
+              -o source.zip
           else
-            curl -fsSL "https://drive.google.com/uc?export=download&id=${FILE_ID}" -o source.zip
+            curl -fsSL \
+              "https://drive.google.com/uc?export=download&id=${FILE_ID}" \
+              -o source.zip
           fi
           echo "Downloaded: $(wc -c < source.zip) bytes"
           unzip -l source.zip | head -20
@@ -51,7 +57,6 @@ jobs:
       - name: Install NDK
         run: |
           sdkmanager --install "ndk;${{ env.NDK_VERSION }}" 2>&1 | tail -5
-          echo "NDK installed: $ANDROID_SDK_ROOT/ndk/${{ env.NDK_VERSION }}"
 
       - name: Download zygisk.hpp
         run: |
@@ -89,26 +94,15 @@ jobs:
           OUT=staging
           mkdir -p "$OUT/zygisk" "$OUT/META-INF/com/google/android"
 
-          cp module.prop                        "$OUT/module.prop"
-          cp libs/arm64-v8a/libmtalk_10kb.so    "$OUT/zygisk/arm64-v8a.so"
-          cp libs/armeabi-v7a/libmtalk_10kb.so  "$OUT/zygisk/armeabi-v7a.so"
+          cp module.prop "$OUT/module.prop"
+          cp libs/arm64-v8a/libmtalk_10kb.so "$OUT/zygisk/arm64-v8a.so"
+          cp libs/armeabi-v7a/libmtalk_10kb.so "$OUT/zygisk/armeabi-v7a.so"
 
-          cat > "$OUT/customize.sh" << 'SH'
-#!/system/bin/sh
-ui_print "- mTalk 10KB Bypass"
-ui_print "- Patch: libapp.so+0x992098 (b.ge -> nop)"
-ui_print "- Target: com.lgcns.newucap.demo v1.3.2"
-SH
+          printf '#!/system/bin/sh\nui_print "- mTalk 10KB Bypass"\nui_print "- Patch: libapp.so+0x992098 (b.ge -> nop)"\nui_print "- Target: com.lgcns.newucap.demo v1.3.2"\n' \
+            > "$OUT/customize.sh"
 
-          cat > "$OUT/META-INF/com/google/android/update-binary" << 'SH'
-#!/system/bin/sh
-SKIPUNZIP=1
-unzip -o "$ZIPFILE" module.prop  -d "$MODPATH"
-unzip -o "$ZIPFILE" customize.sh -d "$MODPATH"
-unzip -o "$ZIPFILE" 'zygisk/*'   -d "$MODPATH"
-chmod 755 "$MODPATH/customize.sh"
-. "$MODPATH/customize.sh"
-SH
+          printf '#!/system/bin/sh\nSKIPUNZIP=1\nunzip -o "$ZIPFILE" module.prop -d "$MODPATH"\nunzip -o "$ZIPFILE" customize.sh -d "$MODPATH"\nunzip -o "$ZIPFILE" '"'"'zygisk/*'"'"' -d "$MODPATH"\nchmod 755 "$MODPATH/customize.sh"\n. "$MODPATH/customize.sh"\n' \
+            > "$OUT/META-INF/com/google/android/update-binary"
 
           echo "#MAGISK" > "$OUT/META-INF/com/google/android/updater-script"
 
@@ -133,7 +127,6 @@ SH
           body: |
             Bo gioi han "Please keep your message to 10KB or less"
             Patch: libapp.so+0x992098 (b.ge -> nop)
-
             Install: Magisk -> Modules -> Install from storage -> Reboot
             Debug: adb logcat | grep mTalk10KB
           files: ${{ env.ZIP_NAME }}
