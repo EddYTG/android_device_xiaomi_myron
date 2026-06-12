@@ -75,6 +75,8 @@ jobs:
         run: |
           sed -i 's/^APP_STL.*/APP_STL := c++_static/' jni/Application.mk
           grep -q '^APP_STL' jni/Application.mk || echo 'APP_STL := c++_static' >> jni/Application.mk
+          # Fix missing #include <cerrno> in main.cpp
+          grep -q '#include <cerrno>' jni/main.cpp || sed -i 's/#include <cstring>/#include <cstring>\n#include <cerrno>/' jni/main.cpp
           NDK_HOME="${ANDROID_SDK_ROOT}/ndk/${{ env.NDK_VERSION }}"
           $NDK_HOME/ndk-build \
             NDK_PROJECT_PATH=. \
