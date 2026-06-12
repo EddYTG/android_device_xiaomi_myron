@@ -51,6 +51,12 @@ jobs:
           fi
           find . -not -path './.git/*' -not -name 'source.zip' | sort | head -30
 
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
