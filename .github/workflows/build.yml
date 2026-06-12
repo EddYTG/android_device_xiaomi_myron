@@ -73,6 +73,8 @@ jobs:
 
       - name: Build native Zygisk module
         run: |
+          sed -i 's/^APP_STL.*/APP_STL := c++_static/' jni/Application.mk
+          grep -q '^APP_STL' jni/Application.mk || echo 'APP_STL := c++_static' >> jni/Application.mk
           NDK_HOME="${ANDROID_SDK_ROOT}/ndk/${{ env.NDK_VERSION }}"
           $NDK_HOME/ndk-build \
             NDK_PROJECT_PATH=. \
