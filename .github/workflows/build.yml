@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       drive_url:
-        description: "Link chia sẻ file ZIP trên Google Drive"
+        description: "Google Drive file ID hoặc link chia sẻ ZIP"
         required: true
         type: string
       python_version:
@@ -50,10 +50,29 @@ jobs:
             throw "drive_url đang trống."
           }
 
-          python -m gdown --fuzzy "$env:DRIVE_URL" --output source.zip
+          $driveInput = $env:DRIVE_URL.Trim()
+
+          # Nhận cả file ID lẫn link chia sẻ Google Drive.
+          if ($driveInput -match '^[A-Za-z0-9_-]{20,}$') {
+            $fileId = $driveInput
+          }
+          elseif ($driveInput -match '/d/([A-Za-z0-9_-]+)') {
+            $fileId = $Matches[1]
+          }
+          elseif ($driveInput -match '[?&]id=([A-Za-z0-9_-]+)') {
+            $fileId = $Matches[1]
+          }
+          else {
+            throw "Không lấy được Google Drive file ID từ dữ liệu đã nhập."
+          }
+
+          Write-Host "Google Drive file ID: $fileId"
+
+          # Dùng Python API của gdown, không dùng --fuzzy vì một số bản gdown đã bỏ tùy chọn này.
+          python -c "import gdown,sys; p=gdown.download(id=sys.argv[1], output='source.zip', quiet=False); raise SystemExit(0 if p else 1)" "$fileId"
 
           if (!(Test-Path "source.zip")) {
-            throw "Không tải được source.zip từ Google Drive."
+            throw "Không tải được source.zip từ Google Drive. Kiểm tra quyền Anyone with the link."
           }
 
           $size = (Get-Item "source.zip").Length
