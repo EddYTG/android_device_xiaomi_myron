@@ -1,147 +1,184 @@
-name: Build mTalk 10KB Bypass
+name: Build ICM1000 Nuitka from Google Drive
 
 on:
-  push:
-    branches: [main, master]
-    tags: ['v*']
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
+    inputs:
+      drive_url:
+        description: "Link chia sẻ file ZIP trên Google Drive"
+        required: true
+        type: string
+      python_version:
+        description: "Python dùng để build"
+        required: true
+        default: "3.11"
+        type: choice
+        options:
+          - "3.11"
+          - "3.12"
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+permissions:
+  contents: read
 
 jobs:
-  build:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 30
-
-    env:
-      NDK_VERSION: "25.2.9519653"
-      DRIVE_FILE_ID: "1GDbkySpkBaXJQ3JJSKGwQbQk6vUT2Tgv"
+  build-windows:
+    name: Build Windows standalone
+    runs-on: windows-latest
+    timeout-minutes: 90
 
     steps:
+      - name: Checkout workflow repository
+        uses: actions/checkout@v4
 
-      - name: Download source from Google Drive
-        run: |
-          FILE_ID="${{ env.DRIVE_FILE_ID }}"
-          curl -fsSc /tmp/gc.txt \
-            "https://drive.google.com/uc?export=download&id=${FILE_ID}" \
-            -o /tmp/check.html
-          CONFIRM=$(grep -oP 'confirm=\K[^&"]+' /tmp/check.html | head -1)
-          if [ -n "$CONFIRM" ]; then
-            curl -fsSL -b /tmp/gc.txt \
-              "https://drive.google.com/uc?export=download&confirm=${CONFIRM}&id=${FILE_ID}" \
-              -o source.zip
-          else
-            curl -fsSL \
-              "https://drive.google.com/uc?export=download&id=${FILE_ID}" \
-              -o source.zip
-          fi
-          echo "Downloaded: $(wc -c < source.zip) bytes"
-          unzip -l source.zip | head -20
-
-      - name: Extract source
-        run: |
-          unzip -q source.zip
-          ROOT=$(unzip -l source.zip | awk 'NR==4{print $4}' | cut -d/ -f1)
-          if [ -d "$ROOT" ] && [ "$ROOT" != "." ] && [ -n "$ROOT" ]; then
-            shopt -s dotglob && mv "$ROOT"/* . && rmdir "$ROOT" 2>/dev/null || true
-          fi
-          find . -not -path './.git/*' -not -name 'source.zip' | sort | head -30
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          distribution: temurin
-          java-version: '17'
+          python-version: ${{ inputs.python_version }}
+          architecture: x64
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install NDK
+      - name: Install downloader and build tools
+        shell: pwsh
         run: |
-          sdkmanager --install "ndk;${{ env.NDK_VERSION }}" 2>&1 | tail -5
+          python -m pip install --upgrade pip
+          python -m pip install gdown nuitka ordered-set zstandard
 
-      - name: Download zygisk.hpp
+      - name: Download source ZIP from Google Drive
+        shell: pwsh
+        env:
+          DRIVE_URL: ${{ inputs.drive_url }}
         run: |
-          curl -fsSL \
-            "https://raw.githubusercontent.com/topjohnwu/zygisk-module-sample/master/module/jni/zygisk.hpp" \
-            -o jni/zygisk.hpp
-          echo "zygisk.hpp: $(wc -c < jni/zygisk.hpp) bytes"
+          if ([string]::IsNullOrWhiteSpace($env:DRIVE_URL)) {
+            throw "drive_url đang trống."
+          }
 
-      - name: Build native Zygisk module
+          python -m gdown --fuzzy "$env:DRIVE_URL" --output source.zip
+
+          if (!(Test-Path "source.zip")) {
+            throw "Không tải được source.zip từ Google Drive."
+          }
+
+          $size = (Get-Item "source.zip").Length
+          if ($size -lt 1000) {
+            throw "File tải về quá nhỏ ($size bytes). Hãy bật Anyone with the link trên Google Drive."
+          }
+
+          New-Item -ItemType Directory -Path source -Force | Out-Null
+          Expand-Archive -Path source.zip -DestinationPath source -Force
+
+      - name: Locate project root
+        shell: pwsh
         run: |
-          sed -i 's/^APP_STL.*/APP_STL := c++_static/' jni/Application.mk
-          grep -q '^APP_STL' jni/Application.mk || echo 'APP_STL := c++_static' >> jni/Application.mk
-          # Fix missing #include <cerrno> in main.cpp
-          grep -q '#include <cerrno>' jni/main.cpp || sed -i 's/#include <cstring>/#include <cstring>\n#include <cerrno>/' jni/main.cpp
-          NDK_HOME="${ANDROID_SDK_ROOT}/ndk/${{ env.NDK_VERSION }}"
-          $NDK_HOME/ndk-build \
-            NDK_PROJECT_PATH=. \
-            APP_BUILD_SCRIPT=jni/Android.mk \
-            NDK_APPLICATION_MK=jni/Application.mk \
-            APP_ABI="arm64-v8a armeabi-v7a" \
-            APP_OPTIM=release \
-            -j$(nproc) V=0
-          find libs -name "*.so" -exec ls -lh {} \;
+          $apps = @(Get-ChildItem -Path source -Filter app.py -File -Recurse)
+          if ($apps.Count -eq 0) {
+            throw "Không tìm thấy app.py trong ZIP."
+          }
 
-      - name: Resolve version
-        id: ver
+          $app = $apps | Sort-Object { $_.FullName.Length } | Select-Object -First 1
+          $project = $app.Directory.FullName
+
+          "PROJECT_DIR=$project" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "APP_FILE=$($app.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          Write-Host "Project root: $project"
+          Write-Host "Entry file  : $($app.FullName)"
+
+      - name: Install application dependencies
+        shell: pwsh
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            V="${GITHUB_REF#refs/tags/}"
-          else
-            V="dev-$(date +%Y%m%d)-${GITHUB_SHA::7}"
-          fi
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-          echo "Version: $V"
+          Set-Location "$env:PROJECT_DIR"
 
-      - name: Package Magisk module ZIP
+          if (Test-Path "requirements.txt") {
+            Write-Host "Installing requirements.txt"
+            python -m pip install -r requirements.txt
+          }
+          elseif (Test-Path "requirements-build.txt") {
+            Write-Host "Installing requirements-build.txt"
+            python -m pip install -r requirements-build.txt
+          }
+          else {
+            Write-Host "No requirements file found; installing fallback dependencies"
+            python -m pip install Flask Flask-SocketIO eventlet cryptography requests
+          }
+
+          python -c "import flask, flask_socketio, eventlet, cryptography, requests; print('Dependency import test: OK')"
+
+      - name: Compile with Nuitka standalone and MinGW64
+        shell: pwsh
         run: |
-          V="${{ steps.ver.outputs.version }}"
-          OUT=staging
-          mkdir -p "$OUT/zygisk" "$OUT/META-INF/com/google/android"
+          Set-Location "$env:PROJECT_DIR"
 
-          cp module.prop "$OUT/module.prop"
-          cp libs/arm64-v8a/libmtalk_10kb.so "$OUT/zygisk/arm64-v8a.so"
-          cp libs/armeabi-v7a/libmtalk_10kb.so "$OUT/zygisk/armeabi-v7a.so"
+          if (Test-Path "build") {
+            Remove-Item "build" -Recurse -Force
+          }
 
-          printf '#!/system/bin/sh\nui_print "- mTalk 10KB Bypass"\nui_print "- Patch: libapp.so+0x992098 (b.ge -> nop)"\nui_print "- Target: com.lgcns.newucap.demo v1.3.2"\n' \
-            > "$OUT/customize.sh"
+          python -m nuitka app.py `
+            --standalone `
+            --mingw64 `
+            --assume-yes-for-downloads `
+            --output-dir=build `
+            --output-filename=ICM1000_Monitor.exe `
+            --include-package=flask `
+            --include-package=flask_socketio `
+            --include-package=socketio `
+            --include-package=engineio `
+            --include-package=eventlet `
+            --include-package=cryptography `
+            --include-package=requests `
+            --nofollow-import-to=tkinter `
+            --nofollow-import-to=matplotlib `
+            --nofollow-import-to=numpy.tests `
+            --windows-console-mode=force
 
-          printf '#!/system/bin/sh\nSKIPUNZIP=1\nunzip -o "$ZIPFILE" module.prop -d "$MODPATH"\nunzip -o "$ZIPFILE" customize.sh -d "$MODPATH"\nunzip -o "$ZIPFILE" '"'"'zygisk/*'"'"' -d "$MODPATH"\nchmod 755 "$MODPATH/customize.sh"\n. "$MODPATH/customize.sh"\n' \
-            > "$OUT/META-INF/com/google/android/update-binary"
+      - name: Copy external files into standalone folder
+        shell: pwsh
+        run: |
+          Set-Location "$env:PROJECT_DIR"
 
-          echo "#MAGISK" > "$OUT/META-INF/com/google/android/updater-script"
+          $exe = Get-ChildItem -Path build -Filter ICM1000_Monitor.exe -File -Recurse |
+            Select-Object -First 1
 
-          ZIP="mtalk_10kb_bypass_${V}.zip"
-          ( cd "$OUT" && zip -r9 "../$ZIP" . )
-          echo "ZIP_NAME=$ZIP" >> "$GITHUB_ENV"
-          echo "Built: $ZIP ($(wc -c < $ZIP) bytes)"
+          if ($null -eq $exe) {
+            throw "Build hoàn tất nhưng không tìm thấy ICM1000_Monitor.exe."
+          }
 
-      - name: Upload artifact
+          $dist = $exe.Directory.FullName
+          Write-Host "Standalone folder: $dist"
+
+          foreach ($file in @(".env", "cert.pem", "key.pem", "users.json")) {
+            if (Test-Path $file) {
+              Copy-Item $file -Destination $dist -Force
+            }
+          }
+
+          foreach ($dir in @("templates", "static", "csv_cache", "data", "config")) {
+            if (Test-Path $dir) {
+              Copy-Item $dir -Destination $dist -Recurse -Force
+            }
+          }
+
+          Get-ChildItem -File | Where-Object {
+            $_.Extension.ToLowerInvariant() -in @(".json", ".db", ".sqlite", ".ini")
+          } | ForEach-Object {
+            Copy-Item $_.FullName -Destination $dist -Force
+          }
+
+          $zipPath = Join-Path $env:GITHUB_WORKSPACE "ICM1000_Monitor_Standalone.zip"
+          if (Test-Path $zipPath) {
+            Remove-Item $zipPath -Force
+          }
+
+          Compress-Archive -Path (Join-Path $dist "*") -DestinationPath $zipPath -CompressionLevel Optimal
+
+          "DIST_DIR=$dist" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "OUTPUT_ZIP=$zipPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          Write-Host "Output ZIP: $zipPath"
+          Get-ChildItem $dist | Select-Object Name, Length
+
+      - name: Upload standalone artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mtalk_10kb_bypass-${{ steps.ver.outputs.version }}
-          path: ${{ env.ZIP_NAME }}
-          retention-days: 30
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: "mTalk 10KB Bypass ${{ steps.ver.outputs.version }}"
-          body: |
-            Bo gioi han "Please keep your message to 10KB or less"
-            Patch: libapp.so+0x992098 (b.ge -> nop)
-            Install: Magisk -> Modules -> Install from storage -> Reboot
-            Debug: adb logcat | grep mTalk10KB
-          files: ${{ env.ZIP_NAME }}
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+          name: ICM1000-Monitor-Windows-Standalone
+          path: ${{ env.OUTPUT_ZIP }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
