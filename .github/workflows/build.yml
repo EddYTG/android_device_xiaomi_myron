@@ -1,4 +1,4 @@
-name: Build ICM1000 Nuitka from Google Drive
+name: Build ICM1000 Main and HTTP Gateway from Google Drive
 
 on:
   workflow_dispatch:
@@ -21,119 +21,72 @@ permissions:
 
 jobs:
   build-windows:
-    name: Build Windows standalone
     runs-on: windows-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
-      - name: Checkout workflow repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python_version }}
           architecture: x64
 
-      - name: Install downloader and build tools
+      - name: Install tools
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install gdown nuitka ordered-set zstandard
+          python -m pip install gdown nuitka ordered-set zstandard Flask Flask-SocketIO eventlet cryptography requests waitress
 
-      - name: Download source ZIP from Google Drive
+      - name: Download ZIP from Google Drive
         shell: pwsh
         env:
           DRIVE_URL: ${{ inputs.drive_url }}
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:DRIVE_URL)) {
-            throw "drive_url đang trống."
-          }
-
           $driveInput = $env:DRIVE_URL.Trim()
+          if ($driveInput -match '^[A-Za-z0-9_-]{20,}$') { $fileId = $driveInput }
+          elseif ($driveInput -match '/d/([A-Za-z0-9_-]+)') { $fileId = $Matches[1] }
+          elseif ($driveInput -match '[?&]id=([A-Za-z0-9_-]+)') { $fileId = $Matches[1] }
+          else { throw "Không lấy được Google Drive file ID." }
 
-          # Nhận cả file ID lẫn link chia sẻ Google Drive.
-          if ($driveInput -match '^[A-Za-z0-9_-]{20,}$') {
-            $fileId = $driveInput
-          }
-          elseif ($driveInput -match '/d/([A-Za-z0-9_-]+)') {
-            $fileId = $Matches[1]
-          }
-          elseif ($driveInput -match '[?&]id=([A-Za-z0-9_-]+)') {
-            $fileId = $Matches[1]
-          }
-          else {
-            throw "Không lấy được Google Drive file ID từ dữ liệu đã nhập."
-          }
-
-          Write-Host "Google Drive file ID: $fileId"
-
-          # Dùng Python API của gdown, không dùng --fuzzy vì một số bản gdown đã bỏ tùy chọn này.
           python -c "import gdown,sys; p=gdown.download(id=sys.argv[1], output='source.zip', quiet=False); raise SystemExit(0 if p else 1)" "$fileId"
-
-          if (!(Test-Path "source.zip")) {
-            throw "Không tải được source.zip từ Google Drive. Kiểm tra quyền Anyone with the link."
-          }
-
-          $size = (Get-Item "source.zip").Length
-          if ($size -lt 1000) {
-            throw "File tải về quá nhỏ ($size bytes). Hãy bật Anyone with the link trên Google Drive."
-          }
+          if (!(Test-Path source.zip)) { throw "Không tải được source.zip" }
 
           New-Item -ItemType Directory -Path source -Force | Out-Null
-          Expand-Archive -Path source.zip -DestinationPath source -Force
+          Expand-Archive source.zip source -Force
 
-      - name: Locate project root
+      - name: Locate project
         shell: pwsh
         run: |
-          $apps = @(Get-ChildItem -Path source -Filter app.py -File -Recurse)
-          if ($apps.Count -eq 0) {
-            throw "Không tìm thấy app.py trong ZIP."
-          }
+          $main = Get-ChildItem source -Filter app.py -File -Recurse |
+            Where-Object { $_.Directory.Name -ne '__pycache__' } |
+            Sort-Object { $_.FullName.Length } |
+            Select-Object -First 1
+          if ($null -eq $main) { throw "Không tìm thấy app.py chính" }
 
-          $app = $apps | Sort-Object { $_.FullName.Length } | Select-Object -First 1
-          $project = $app.Directory.FullName
+          $project = $main.Directory.FullName
+          $gateway = Join-Path $project 'gateway_app.py'
+          if (!(Test-Path $gateway)) { throw "Không tìm thấy gateway_app.py" }
 
-          "PROJECT_DIR=$project" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "APP_FILE=$($app.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "PROJECT_DIR=$project" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Project: $project"
 
-          Write-Host "Project root: $project"
-          Write-Host "Entry file  : $($app.FullName)"
-
-      - name: Install application dependencies
+      - name: Install project requirements
         shell: pwsh
         run: |
-          Set-Location "$env:PROJECT_DIR"
+          Set-Location $env:PROJECT_DIR
+          if (Test-Path requirements-build.txt) { python -m pip install -r requirements-build.txt }
+          if (Test-Path requirements-gateway.txt) { python -m pip install -r requirements-gateway.txt }
 
-          if (Test-Path "requirements.txt") {
-            Write-Host "Installing requirements.txt"
-            python -m pip install -r requirements.txt
-          }
-          elseif (Test-Path "requirements-build.txt") {
-            Write-Host "Installing requirements-build.txt"
-            python -m pip install -r requirements-build.txt
-          }
-          else {
-            Write-Host "No requirements file found; installing fallback dependencies"
-            python -m pip install Flask Flask-SocketIO eventlet cryptography requests
-          }
-
-          python -c "import flask, flask_socketio, eventlet, cryptography, requests; print('Dependency import test: OK')"
-
-      - name: Compile with Nuitka standalone and MinGW64
+      - name: Build main HTTPS app
         shell: pwsh
         run: |
-          Set-Location "$env:PROJECT_DIR"
-
-          if (Test-Path "build") {
-            Remove-Item "build" -Recurse -Force
-          }
-
+          Set-Location $env:PROJECT_DIR
           python -m nuitka app.py `
             --standalone `
             --mingw64 `
             --assume-yes-for-downloads `
-            --output-dir=build `
+            --output-dir=build_main `
             --output-filename=ICM1000_Monitor.exe `
             --include-package=flask `
             --include-package=flask_socketio `
@@ -147,57 +100,68 @@ jobs:
             --nofollow-import-to=numpy.tests `
             --windows-console-mode=force
 
-      - name: Copy external files into standalone folder
+      - name: Build HTTP gateway
         shell: pwsh
         run: |
-          Set-Location "$env:PROJECT_DIR"
+          Set-Location $env:PROJECT_DIR
+          python -m nuitka gateway_app.py `
+            --standalone `
+            --mingw64 `
+            --assume-yes-for-downloads `
+            --output-dir=build_gateway `
+            --output-filename=ICM1000_Client_Gateway.exe `
+            --include-package=flask `
+            --include-package=requests `
+            --include-package=waitress `
+            --nofollow-import-to=tkinter `
+            --windows-console-mode=force
 
-          $exe = Get-ChildItem -Path build -Filter ICM1000_Monitor.exe -File -Recurse |
-            Select-Object -First 1
+      - name: Package outputs
+        shell: pwsh
+        run: |
+          Set-Location $env:PROJECT_DIR
 
-          if ($null -eq $exe) {
-            throw "Build hoàn tất nhưng không tìm thấy ICM1000_Monitor.exe."
+          $mainExe = Get-ChildItem build_main -Filter ICM1000_Monitor.exe -File -Recurse | Select-Object -First 1
+          $gatewayExe = Get-ChildItem build_gateway -Filter ICM1000_Client_Gateway.exe -File -Recurse | Select-Object -First 1
+          if ($null -eq $mainExe) { throw "Không tìm thấy main EXE" }
+          if ($null -eq $gatewayExe) { throw "Không tìm thấy gateway EXE" }
+
+          $mainDist = $mainExe.Directory.FullName
+          $gatewayDist = $gatewayExe.Directory.FullName
+
+          foreach ($file in @('.env', 'cert.pem', 'key.pem', 'users.json')) {
+            if (Test-Path $file) { Copy-Item $file $mainDist -Force }
+          }
+          foreach ($dir in @('static', 'csv_cache', 'data', 'config')) {
+            if (Test-Path $dir) { Copy-Item $dir $mainDist -Recurse -Force }
           }
 
-          $dist = $exe.Directory.FullName
-          Write-Host "Standalone folder: $dist"
-
-          foreach ($file in @(".env", "cert.pem", "key.pem", "users.json")) {
-            if (Test-Path $file) {
-              Copy-Item $file -Destination $dist -Force
-            }
+          foreach ($file in @('.env', 'cert.pem')) {
+            if (Test-Path $file) { Copy-Item $file $gatewayDist -Force }
           }
 
-          foreach ($dir in @("templates", "static", "csv_cache", "data", "config")) {
-            if (Test-Path $dir) {
-              Copy-Item $dir -Destination $dist -Recurse -Force
-            }
-          }
+          $mainZip = Join-Path $env:GITHUB_WORKSPACE 'ICM1000_Main_HTTPS_Standalone.zip'
+          $gatewayZip = Join-Path $env:GITHUB_WORKSPACE 'ICM1000_Client_HTTP_Gateway_Standalone.zip'
+          Compress-Archive (Join-Path $mainDist '*') $mainZip -CompressionLevel Optimal
+          Compress-Archive (Join-Path $gatewayDist '*') $gatewayZip -CompressionLevel Optimal
 
-          Get-ChildItem -File | Where-Object {
-            $_.Extension.ToLowerInvariant() -in @(".json", ".db", ".sqlite", ".ini")
-          } | ForEach-Object {
-            Copy-Item $_.FullName -Destination $dist -Force
-          }
+          "MAIN_ZIP=$mainZip" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "GATEWAY_ZIP=$gatewayZip" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
-          $zipPath = Join-Path $env:GITHUB_WORKSPACE "ICM1000_Monitor_Standalone.zip"
-          if (Test-Path $zipPath) {
-            Remove-Item $zipPath -Force
-          }
-
-          Compress-Archive -Path (Join-Path $dist "*") -DestinationPath $zipPath -CompressionLevel Optimal
-
-          "DIST_DIR=$dist" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "OUTPUT_ZIP=$zipPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-          Write-Host "Output ZIP: $zipPath"
-          Get-ChildItem $dist | Select-Object Name, Length
-
-      - name: Upload standalone artifact
+      - name: Upload main app
         uses: actions/upload-artifact@v4
         with:
-          name: ICM1000-Monitor-Windows-Standalone
-          path: ${{ env.OUTPUT_ZIP }}
+          name: ICM1000-Main-HTTPS-Standalone
+          path: ${{ env.MAIN_ZIP }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload client gateway
+        uses: actions/upload-artifact@v4
+        with:
+          name: ICM1000-Client-HTTP-Gateway-Standalone
+          path: ${{ env.GATEWAY_ZIP }}
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
