@@ -45,9 +45,30 @@ jobs:
           }
 
           Write-Host "Đang tải source từ Google Drive..."
-          gdown --fuzzy "$env:DRIVE_URL" -O "$downloadPath"
-          if ($LASTEXITCODE -ne 0) {
-            throw "Không tải được file từ Google Drive. Hãy bật quyền: Ai có liên kết cũng xem được."
+
+          # gdown 6.x đã bỏ tùy chọn --fuzzy và tự nhận diện ID từ link chia sẻ Drive.
+          # Dùng python -m gdown để không phụ thuộc PATH của script gdown.exe.
+          $downloaded = $false
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            Write-Host "Lần tải $attempt/3..."
+            python -m gdown "$env:DRIVE_URL" -O "$downloadPath"
+
+            if ($LASTEXITCODE -eq 0 -and (Test-Path $downloadPath)) {
+              $downloaded = $true
+              break
+            }
+
+            if (Test-Path $downloadPath) {
+              Remove-Item $downloadPath -Force -ErrorAction SilentlyContinue
+            }
+
+            if ($attempt -lt 3) {
+              Start-Sleep -Seconds 5
+            }
+          }
+
+          if (-not $downloaded) {
+            throw "Không tải được file từ Google Drive. Kiểm tra link là link FILE ZIP và quyền chia sẻ là: Ai có liên kết cũng xem được."
           }
 
           if (-not (Test-Path $downloadPath)) {
