@@ -1,167 +1,282 @@
-name: Build ICM1000 Main and HTTP Gateway from Google Drive
+name: Build IQ từ Google Drive
 
 on:
   workflow_dispatch:
     inputs:
       drive_url:
-        description: "Google Drive file ID hoặc link chia sẻ ZIP"
+        description: "Dán link Google Drive của file ZIP source (phải bật Ai có liên kết cũng xem được)"
         required: true
         type: string
-      python_version:
-        description: "Python dùng để build"
-        required: true
-        default: "3.11"
-        type: choice
-        options:
-          - "3.11"
-          - "3.12"
 
 permissions:
   contents: read
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
-    timeout-minutes: 120
+  build:
+    name: Build Release x64 + Obfuscar
+    runs-on: windows-2022
+    timeout-minutes: 75
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Lấy repository chứa workflow
+        uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - name: Cài Python
+        uses: actions/setup-python@v6
         with:
-          python-version: ${{ inputs.python_version }}
-          architecture: x64
+          python-version: "3.13"
 
-      - name: Install tools
+      - name: Cài gdown
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install gdown nuitka ordered-set zstandard Flask Flask-SocketIO eventlet cryptography requests waitress
+          python -m pip install "gdown==6.1.0"
 
-      - name: Download ZIP from Google Drive
+      - name: Tải source từ Google Drive
         shell: pwsh
         env:
           DRIVE_URL: ${{ inputs.drive_url }}
         run: |
-          $driveInput = $env:DRIVE_URL.Trim()
-          if ($driveInput -match '^[A-Za-z0-9_-]{20,}$') { $fileId = $driveInput }
-          elseif ($driveInput -match '/d/([A-Za-z0-9_-]+)') { $fileId = $Matches[1] }
-          elseif ($driveInput -match '[?&]id=([A-Za-z0-9_-]+)') { $fileId = $Matches[1] }
-          else { throw "Không lấy được Google Drive file ID." }
+          $ErrorActionPreference = "Stop"
 
-          python -c "import gdown,sys; p=gdown.download(id=sys.argv[1], output='source.zip', quiet=False); raise SystemExit(0 if p else 1)" "$fileId"
-          if (!(Test-Path source.zip)) { throw "Không tải được source.zip" }
-
-          New-Item -ItemType Directory -Path source -Force | Out-Null
-          Expand-Archive source.zip source -Force
-
-      - name: Locate project
-        shell: pwsh
-        run: |
-          $main = Get-ChildItem source -Filter app.py -File -Recurse |
-            Where-Object { $_.Directory.Name -ne '__pycache__' } |
-            Sort-Object { $_.FullName.Length } |
-            Select-Object -First 1
-          if ($null -eq $main) { throw "Không tìm thấy app.py chính" }
-
-          $project = $main.Directory.FullName
-          $gateway = Join-Path $project 'gateway_app.py'
-          if (!(Test-Path $gateway)) { throw "Không tìm thấy gateway_app.py" }
-
-          "PROJECT_DIR=$project" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Host "Project: $project"
-
-      - name: Install project requirements
-        shell: pwsh
-        run: |
-          Set-Location $env:PROJECT_DIR
-          if (Test-Path requirements-build.txt) { python -m pip install -r requirements-build.txt }
-          if (Test-Path requirements-gateway.txt) { python -m pip install -r requirements-gateway.txt }
-
-      - name: Build main HTTPS app
-        shell: pwsh
-        run: |
-          Set-Location $env:PROJECT_DIR
-          python -m nuitka app.py `
-            --standalone `
-            --mingw64 `
-            --assume-yes-for-downloads `
-            --output-dir=build_main `
-            --output-filename=ICM1000_Monitor.exe `
-            --include-package=flask `
-            --include-package=flask_socketio `
-            --include-package=socketio `
-            --include-package=engineio `
-            --include-package=eventlet `
-            --include-package=cryptography `
-            --include-package=requests `
-            --nofollow-import-to=tkinter `
-            --nofollow-import-to=matplotlib `
-            --nofollow-import-to=numpy.tests `
-            --windows-console-mode=force
-
-      - name: Build HTTP gateway
-        shell: pwsh
-        run: |
-          Set-Location $env:PROJECT_DIR
-          python -m nuitka gateway_app.py `
-            --standalone `
-            --mingw64 `
-            --assume-yes-for-downloads `
-            --output-dir=build_gateway `
-            --output-filename=ICM1000_Client_Gateway.exe `
-            --include-package=flask `
-            --include-package=requests `
-            --include-package=waitress `
-            --nofollow-import-to=tkinter `
-            --windows-console-mode=force
-
-      - name: Package outputs
-        shell: pwsh
-        run: |
-          Set-Location $env:PROJECT_DIR
-
-          $mainExe = Get-ChildItem build_main -Filter ICM1000_Monitor.exe -File -Recurse | Select-Object -First 1
-          $gatewayExe = Get-ChildItem build_gateway -Filter ICM1000_Client_Gateway.exe -File -Recurse | Select-Object -First 1
-          if ($null -eq $mainExe) { throw "Không tìm thấy main EXE" }
-          if ($null -eq $gatewayExe) { throw "Không tìm thấy gateway EXE" }
-
-          $mainDist = $mainExe.Directory.FullName
-          $gatewayDist = $gatewayExe.Directory.FullName
-
-          foreach ($file in @('.env', 'cert.pem', 'key.pem', 'users.json')) {
-            if (Test-Path $file) { Copy-Item $file $mainDist -Force }
-          }
-          foreach ($dir in @('static', 'csv_cache', 'data', 'config')) {
-            if (Test-Path $dir) { Copy-Item $dir $mainDist -Recurse -Force }
+          $downloadPath = Join-Path $env:RUNNER_TEMP "IQ_source.zip"
+          if (Test-Path $downloadPath) {
+            Remove-Item $downloadPath -Force
           }
 
-          foreach ($file in @('.env', 'cert.pem')) {
-            if (Test-Path $file) { Copy-Item $file $gatewayDist -Force }
+          Write-Host "Đang tải source từ Google Drive..."
+          gdown --fuzzy "$env:DRIVE_URL" -O "$downloadPath"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Không tải được file từ Google Drive. Hãy bật quyền: Ai có liên kết cũng xem được."
           }
 
-          $mainZip = Join-Path $env:GITHUB_WORKSPACE 'ICM1000_Main_HTTPS_Standalone.zip'
-          $gatewayZip = Join-Path $env:GITHUB_WORKSPACE 'ICM1000_Client_HTTP_Gateway_Standalone.zip'
-          Compress-Archive (Join-Path $mainDist '*') $mainZip -CompressionLevel Optimal
-          Compress-Archive (Join-Path $gatewayDist '*') $gatewayZip -CompressionLevel Optimal
+          if (-not (Test-Path $downloadPath)) {
+            throw "Không tìm thấy file ZIP sau khi tải."
+          }
 
-          "MAIN_ZIP=$mainZip" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "GATEWAY_ZIP=$gatewayZip" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          $fileInfo = Get-Item $downloadPath
+          if ($fileInfo.Length -lt 1024) {
+            throw "File tải về quá nhỏ ($($fileInfo.Length) byte), có thể link Drive chưa công khai hoặc không phải file ZIP."
+          }
 
-      - name: Upload main app
-        uses: actions/upload-artifact@v4
+          $stream = [System.IO.File]::OpenRead($downloadPath)
+          try {
+            $b1 = $stream.ReadByte()
+            $b2 = $stream.ReadByte()
+          }
+          finally {
+            $stream.Dispose()
+          }
+
+          if ($b1 -ne 0x50 -or $b2 -ne 0x4B) {
+            throw "File tải về không có chữ ký ZIP (PK). Hãy tải đúng file .zip, không dán link thư mục Drive."
+          }
+
+          Write-Host "Tải xong: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+          "SOURCE_ZIP=$downloadPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Giải nén và tìm IQ.sln
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $extractPath = Join-Path $env:GITHUB_WORKSPACE "source"
+          if (Test-Path $extractPath) {
+            Remove-Item $extractPath -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $extractPath | Out-Null
+
+          Expand-Archive -Path "$env:SOURCE_ZIP" -DestinationPath $extractPath -Force
+
+          $solutions = @(Get-ChildItem -Path $extractPath -Filter "IQ.sln" -File -Recurse)
+          if ($solutions.Count -eq 0) {
+            throw "Không tìm thấy IQ.sln trong file ZIP."
+          }
+          if ($solutions.Count -gt 1) {
+            Write-Warning "Có nhiều IQ.sln; workflow sẽ dùng file đầu tiên: $($solutions[0].FullName)"
+          }
+
+          $solution = $solutions[0]
+          $projectRoot = Split-Path -Parent $solution.FullName
+          $projectFile = Join-Path $projectRoot "IQ.csproj"
+
+          if (-not (Test-Path $projectFile)) {
+            throw "Đã tìm thấy IQ.sln nhưng thiếu IQ.csproj tại: $projectRoot"
+          }
+
+          Write-Host "Solution: $($solution.FullName)"
+          Write-Host "Project root: $projectRoot"
+
+          "SOLUTION_PATH=$($solution.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "PROJECT_ROOT=$projectRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Thêm MSBuild Visual Studio 2022 vào PATH
+        uses: microsoft/setup-msbuild@v3
         with:
-          name: ICM1000-Main-HTTPS-Standalone
-          path: ${{ env.MAIN_ZIP }}
+          msbuild-architecture: x64
+
+      - name: Cài NuGet.exe
+        uses: NuGet/setup-nuget@v3
+        with:
+          nuget-version: latest
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
+        with:
+          path: ~\.nuget\packages
+          key: nuget-windows-iq-${{ hashFiles('source/**/IQ.csproj', 'source/**/NuGet.config') }}
+          restore-keys: |
+            nuget-windows-iq-
+
+      - name: Kiểm tra cấu hình project
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $projectFile = Join-Path $env:PROJECT_ROOT "IQ.csproj"
+          [xml]$projectXml = Get-Content -LiteralPath $projectFile
+          $framework = $projectXml.Project.PropertyGroup.TargetFrameworkVersion | Where-Object { $_ } | Select-Object -First 1
+
+          Write-Host "Target Framework: $framework"
+          Write-Host "Configuration: Release"
+          Write-Host "Platform: x64"
+
+          if (-not (Test-Path (Join-Path $env:PROJECT_ROOT "Templates\DF.xlsx"))) {
+            throw "Thiếu Templates\DF.xlsx trong source."
+          }
+
+      - name: Restore NuGet
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Push-Location $env:PROJECT_ROOT
+          try {
+            msbuild "IQ.sln" `
+              /t:Restore `
+              /p:Configuration=Release `
+              /p:Platform=x64 `
+              /p:RestoreIgnoreFailedSources=false `
+              /m `
+              /v:minimal
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "NuGet restore thất bại với mã lỗi $LASTEXITCODE."
+            }
+          }
+          finally {
+            Pop-Location
+          }
+
+      - name: Build Release x64 và chạy Obfuscar
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $binlog = Join-Path $env:RUNNER_TEMP "IQ-build.binlog"
+
+          Push-Location $env:PROJECT_ROOT
+          try {
+            msbuild "IQ.sln" `
+              /t:Rebuild `
+              /p:Configuration=Release `
+              /p:Platform=x64 `
+              /m `
+              /v:minimal `
+              "/bl:$binlog"
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "Build thất bại với mã lỗi $LASTEXITCODE."
+            }
+          }
+          finally {
+            Pop-Location
+          }
+
+          "BUILD_BINLOG=$binlog" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Kiểm tra và đóng gói bản chạy
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $releaseDir = Join-Path $env:PROJECT_ROOT "bin\x64\Release"
+          $mainExe = Join-Path $releaseDir "IQ.exe"
+          $obfuscatedExe = Join-Path $releaseDir "obfuscated\IQ.exe"
+
+          if (-not (Test-Path $mainExe)) {
+            throw "Build xong nhưng không tìm thấy: $mainExe"
+          }
+
+          $packageRoot = Join-Path $env:GITHUB_WORKSPACE "package"
+          $packageDir = Join-Path $packageRoot "IQ-v9.9-Release-x64"
+          if (Test-Path $packageRoot) {
+            Remove-Item $packageRoot -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+
+          Copy-Item -Path (Join-Path $releaseDir "*") -Destination $packageDir -Recurse -Force
+
+          # Một số phiên bản MSBuild.Obfuscar để IQ.exe đã làm rối trong thư mục obfuscated.
+          # Nếu có thì ưu tiên file này và ghi đè IQ.exe trong gói cuối.
+          if (Test-Path $obfuscatedExe) {
+            Write-Host "Đã tìm thấy IQ.exe của Obfuscar; dùng bản đã làm rối."
+            Copy-Item -LiteralPath $obfuscatedExe -Destination (Join-Path $packageDir "IQ.exe") -Force
+          }
+          else {
+            Write-Host "Không có thư mục obfuscated riêng; dùng IQ.exe do bước MSBuild Release tạo ra."
+          }
+
+          $nestedObfuscated = Join-Path $packageDir "obfuscated"
+          if (Test-Path $nestedObfuscated) {
+            Remove-Item $nestedObfuscated -Recurse -Force
+          }
+
+          # Không phát hành symbol debug và file ánh xạ tên làm rối.
+          Get-ChildItem -Path $packageDir -Filter "*.pdb" -File -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
+          Get-ChildItem -Path $packageDir -Filter "Mapping.txt" -File -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
+          Get-ChildItem -Path $packageDir -Filter "mapping.xml" -File -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
+
+          $finalExe = Join-Path $packageDir "IQ.exe"
+          $template = Join-Path $packageDir "Templates\DF.xlsx"
+          if (-not (Test-Path $finalExe)) {
+            throw "Gói cuối thiếu IQ.exe."
+          }
+          if (-not (Test-Path $template)) {
+            throw "Gói cuối thiếu Templates\DF.xlsx."
+          }
+
+          $zipPath = Join-Path $env:GITHUB_WORKSPACE "IQ-v9.9-Release-x64.zip"
+          if (Test-Path $zipPath) {
+            Remove-Item $zipPath -Force
+          }
+          Compress-Archive -Path (Join-Path $packageDir "*") -DestinationPath $zipPath -CompressionLevel Optimal
+
+          $hash = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $hashFile = "$zipPath.sha256"
+          "$hash  IQ-v9.9-Release-x64.zip" | Set-Content -Path $hashFile -Encoding ascii
+
+          Write-Host "Đóng gói xong: $zipPath"
+          Write-Host "SHA-256: $hash"
+
+          "FINAL_ZIP=$zipPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "FINAL_SHA=$hashFile" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Upload bản build
+        uses: actions/upload-artifact@v7
+        with:
+          name: IQ-v9.9-Release-x64-${{ github.run_number }}
+          path: |
+            ${{ env.FINAL_ZIP }}
+            ${{ env.FINAL_SHA }}
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
           compression-level: 0
 
-      - name: Upload client gateway
-        uses: actions/upload-artifact@v4
+      - name: Upload binlog khi build lỗi
+        if: failure()
+        uses: actions/upload-artifact@v7
         with:
-          name: ICM1000-Client-HTTP-Gateway-Standalone
-          path: ${{ env.GATEWAY_ZIP }}
-          if-no-files-found: error
+          name: IQ-build-log-${{ github.run_number }}
+          path: ${{ runner.temp }}/IQ-build.binlog
+          if-no-files-found: ignore
           retention-days: 14
-          compression-level: 0
+          
