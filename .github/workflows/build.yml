@@ -154,11 +154,10 @@ jobs:
           }
 
           Write-Host "Đang cập nhật mật khẩu login vào CryptoCore.cpp..."
-          & $script -Password $env:NEW_PASSWORD
 
-          if ($LASTEXITCODE -ne 0) {
-            throw "Đổi mật khẩu thất bại với mã lỗi $LASTEXITCODE."
-          }
+          # Set-LoginPassword.ps1 là script PowerShell (không phải .exe) nên không set $LASTEXITCODE;
+          # script này tự throw khi lỗi, nên chỉ cần để lỗi đó nổi lên (ErrorActionPreference = Stop).
+          & $script -Password $env:NEW_PASSWORD
 
           Write-Host "Đã cập nhật mật khẩu login. CryptoCore.dll mới sẽ được build ở bước sau."
 
