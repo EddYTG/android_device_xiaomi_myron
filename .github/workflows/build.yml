@@ -7,6 +7,11 @@ on:
         description: "Dán link Google Drive của file ZIP source (phải bật Ai có liên kết cũng xem được)"
         required: true
         type: string
+      new_password:
+        description: "Mật khẩu login mới (để trống = giữ nguyên mật khẩu trong source)"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -120,9 +125,13 @@ jobs:
           $solution = $solutions[0]
           $projectRoot = Split-Path -Parent $solution.FullName
           $projectFile = Join-Path $projectRoot "IQ.csproj"
+          $cryptoCoreProject = Join-Path $projectRoot "CryptoCore\CryptoCore.vcxproj"
 
           if (-not (Test-Path $projectFile)) {
             throw "Đã tìm thấy IQ.sln nhưng thiếu IQ.csproj tại: $projectRoot"
+          }
+          if (-not (Test-Path $cryptoCoreProject)) {
+            throw "Đã tìm thấy IQ.sln nhưng thiếu CryptoCore\CryptoCore.vcxproj tại: $projectRoot (cần để build CryptoCore.dll native)."
           }
 
           Write-Host "Solution: $($solution.FullName)"
@@ -130,6 +139,28 @@ jobs:
 
           "SOLUTION_PATH=$($solution.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "PROJECT_ROOT=$projectRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Đổi mật khẩu login (nếu có nhập)
+        if: ${{ inputs.new_password != '' }}
+        shell: pwsh
+        env:
+          NEW_PASSWORD: ${{ inputs.new_password }}
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $script = Join-Path $env:PROJECT_ROOT "tools\Set-LoginPassword.ps1"
+          if (-not (Test-Path $script)) {
+            throw "Không tìm thấy tools\Set-LoginPassword.ps1 trong source; không thể đổi mật khẩu."
+          }
+
+          Write-Host "Đang cập nhật mật khẩu login vào CryptoCore.cpp..."
+          & $script -Password $env:NEW_PASSWORD
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Đổi mật khẩu thất bại với mã lỗi $LASTEXITCODE."
+          }
+
+          Write-Host "Đã cập nhật mật khẩu login. CryptoCore.dll mới sẽ được build ở bước sau."
 
       - name: Thêm MSBuild Visual Studio 2022 vào PATH
         uses: microsoft/setup-msbuild@v3
@@ -166,6 +197,15 @@ jobs:
             throw "Thiếu Templates\DF.xlsx trong source."
           }
 
+          $cryptoCoreProject = Join-Path $env:PROJECT_ROOT "CryptoCore\CryptoCore.vcxproj"
+          if (-not (Test-Path $cryptoCoreProject)) {
+            throw "Thiếu CryptoCore\CryptoCore.vcxproj trong source."
+          }
+          $toolset = Select-String -Path $cryptoCoreProject -Pattern "<PlatformToolset>(.*)</PlatformToolset>" | Select-Object -First 1
+          if ($toolset) {
+            Write-Host "CryptoCore PlatformToolset: $($toolset.Matches[0].Groups[1].Value)"
+          }
+
       - name: Restore NuGet
         shell: pwsh
         run: |
@@ -188,7 +228,7 @@ jobs:
             Pop-Location
           }
 
-      - name: Build Release x64 và chạy Obfuscar
+      - name: Build Release x64 (CryptoCore native + IQ.exe + Obfuscar)
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
@@ -196,6 +236,9 @@ jobs:
 
           Push-Location $env:PROJECT_ROOT
           try {
+            # IQ.sln build cả 2 project: CryptoCore (C++ native, v143) trước, rồi IQ.csproj (C#).
+            # IQ.csproj có target MSBuild riêng tự gọi CryptoCore.vcxproj nếu build lẻ,
+            # nhưng build qua .sln đảm bảo đúng thứ tự dependency khai báo trong IQ.sln.
             msbuild "IQ.sln" `
               /t:Rebuild `
               /p:Configuration=Release `
@@ -222,9 +265,16 @@ jobs:
           $releaseDir = Join-Path $env:PROJECT_ROOT "bin\x64\Release"
           $mainExe = Join-Path $releaseDir "IQ.exe"
           $obfuscatedExe = Join-Path $releaseDir "obfuscated\IQ.exe"
+          $cryptoDll = Join-Path $releaseDir "CryptoCore.dll"
 
           if (-not (Test-Path $mainExe)) {
             throw "Build xong nhưng không tìm thấy: $mainExe"
+          }
+
+          # CryptoCore.dll phải được copy vào bin\x64\Release bởi target CopyCryptoCoreDll trong IQ.csproj.
+          # Nếu thiếu, IQ.exe sẽ không chạy được trên máy đích (DllNotFoundException khi login).
+          if (-not (Test-Path $cryptoDll)) {
+            throw "Build xong nhưng thiếu CryptoCore.dll tại: $cryptoDll. Kiểm tra log build CryptoCore.vcxproj (project C++ có thể build lỗi hoặc bị bỏ qua)."
           }
 
           $packageRoot = Join-Path $env:GITHUB_WORKSPACE "package"
@@ -253,13 +303,18 @@ jobs:
 
           # Không phát hành symbol debug và file ánh xạ tên làm rối.
           Get-ChildItem -Path $packageDir -Filter "*.pdb" -File -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
+          Get-ChildItem -Path $packageDir -Filter "*.ilk" -File -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
           Get-ChildItem -Path $packageDir -Filter "Mapping.txt" -File -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
           Get-ChildItem -Path $packageDir -Filter "mapping.xml" -File -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
 
           $finalExe = Join-Path $packageDir "IQ.exe"
+          $finalDll = Join-Path $packageDir "CryptoCore.dll"
           $template = Join-Path $packageDir "Templates\DF.xlsx"
           if (-not (Test-Path $finalExe)) {
             throw "Gói cuối thiếu IQ.exe."
+          }
+          if (-not (Test-Path $finalDll)) {
+            throw "Gói cuối thiếu CryptoCore.dll."
           }
           if (-not (Test-Path $template)) {
             throw "Gói cuối thiếu Templates\DF.xlsx."
